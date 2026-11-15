@@ -3,158 +3,242 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
   <title>AquaLibri Operator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet" />
-  <link rel="icon" href="data:," />
-  <link rel="stylesheet" href="/static/css/styles.css?v=8" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Cg fill=%22none%22 stroke=%22%231FA8FF%22 stroke-width=%222.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M27 15.5C24.5 11.5 22.3 8 20 4 14 13 5 21.5 5 31.5a15.5 15.5 0 0 0 25.5 11.7M6.5 34c3.5-7.5 13-8.5 15-2 1.2 4-2.5 6.6-4.9 4.4M27 22h18M36 18.5V38M31 38h10%22/%3E%3C/g%3E%3C/svg%3E" />
+  <script>
+    /* set the theme before first paint: saved choice, else the system setting */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("aq.theme"); } catch (e) {}
+      if (t !== "light" && t !== "dark") t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/css/styles.css?v=14" />
 </head>
 <body class="page--operator">
-<div class="shell">
-  <h1 class="sr-only">AquaLibri Operator dashboard</h1>
+<div class="app">
 
-  <header class="topbar">
-    <div class="brand" id="brand"><span class="brandName">AquaLibri</span></div>
-    <nav aria-label="Primary" class="nav">
-      <a class="navLink" id="nav-portal" href="/portal">Portal</a>
-      <a class="navLink" id="nav-operator" href="/operator" aria-current="page">Operator</a>
+  <aside class="side" aria-label="Sidebar">
+    <div class="sideTop">
+      <a class="brand" id="brand" href="/portal"><span class="brandName"><span class="brandAqua">Aqua</span>Libri</span></a>
+    </div>
+    <nav class="sideNav" aria-label="Primary">
+      <div class="sideGroup">Workspace</div>
+      <a class="sideLink" id="nav-portal" href="/portal" title="Portal">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>
+        <span>Portal</span>
+      </a>
+      <a class="sideLink" id="nav-operator" href="/operator" aria-current="page" title="Operator">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+        <span>Operator</span>
+      </a>
+      <div class="sideGroup">On this page</div>
+      <a class="sideLink" href="#sec-overview" title="Overview">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
+        <span>Overview</span>
+      </a>
+      <a class="sideLink" href="#sec-fleet" title="Fleet map">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.5 12c5 0 5-6 9-6M7.5 12c5 0 5 6 9 6"/></svg>
+        <span>Fleet map</span>
+      </a>
+      <a class="sideLink" href="#sec-water" title="Water &amp; plan">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M7 15l4-5 3 3 5-6"/></svg>
+        <span>Water &amp; plan</span>
+      </a>
+      <a class="sideLink" href="#sec-queue" title="Queue">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9"/></svg>
+        <span>Queue</span>
+      </a>
     </nav>
-    <div class="hdrRight">
-      <div class="clock" role="status" aria-label="Simulation clock">
-        <span class="clockDot blink" aria-hidden="true"></span><span class="clockSim">Sim</span><strong class="mono" id="demo-clock">—</strong>
-      </div>
-      <button type="button" class="btn btnGhost" id="advance-btn">Advance +1 h</button>
-      <label class="vh" for="advance-hours">Simulated hours</label>
-      <select class="btn btnGhost" id="advance-hours" aria-label="Hours to advance">
-        <option value="1" selected>1 h</option>
-        <option value="3">3 h</option>
-        <option value="6">6 h</option>
-      </select>
-      <button type="button" class="btn btnGhost" id="reset-btn">Reset</button>
-      <button type="button" class="btn btnGhost" id="visual-demo-toggle" aria-pressed="false">Visual demo</button>
-    </div>
-  </header>
-
-  <section class="welcome">
-    <div class="welcomeText">
-      <h2 class="pageTitle">Fleet overview</h2>
-      <p class="pageSub"><span>Water and GPU load across the simulated fleet, right now.</span> <span class="badge" id="sim-banner">SIMULATED · NO REAL GPUS</span></p>
-    </div>
-    <div class="stats">
-      <div class="stat">
-        <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4.5 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-6.5 6-11z"/></svg></span>
-        <div><div class="statVal mono" id="stat-water">—</div><div class="statLbl">Fleet water, L/h · modeled</div></div>
-      </div>
-      <div class="stat">
-        <span class="statIcon" id="stat-over-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 21 19H3z"/><path d="M12 10v4M12 17v.01"/></svg></span>
-        <div><div class="statVal mono" id="stat-over">—</div><div class="statLbl">Sites over cap</div></div>
-      </div>
-      <div class="stat">
-        <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg></span>
-        <div><div class="statVal mono" id="stat-jobs">—</div><div class="statLbl">Jobs running · queued</div></div>
-      </div>
-      <button type="button" class="btn btnP btnNew" id="schedule-open" aria-haspopup="dialog">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        New schedule
+    <div class="sideFoot">
+      <button type="button" class="btn btnGhost sideDemo" id="visual-demo-toggle" aria-pressed="false" title="Visual demo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4l14 8-14 8z"/></svg>
+        <span>Visual demo</span>
       </button>
     </div>
-  </section>
+  </aside>
 
-  <!-- VISUAL DEMO controls (only with ?demo=1 / the toggle) -->
-  <section class="director" id="director" aria-label="Visual demo controls" hidden>
-    <span class="kick">Visual demo</span>
-    <div class="segGroup" role="group" aria-label="Scenario">
-      <button type="button" class="seg" id="d-routine" aria-pressed="true">Routine</button>
-      <button type="button" class="seg" id="d-emergency" aria-pressed="false">Emergency</button>
-    </div>
-    <div class="segGroup" role="group" aria-label="Sample preview outcome">
-      <button type="button" class="seg" id="d-feasible" aria-pressed="false">Feasible</button>
-      <button type="button" class="seg" id="d-stale" aria-pressed="false">Stale</button>
-      <button type="button" class="seg" id="d-infeasible" aria-pressed="false">Infeasible</button>
-    </div>
-    <span id="director-tag"></span>
-  </section>
+  <div class="shell">
+    <h1 class="sr-only">AquaLibri Operator dashboard</h1>
 
-  <!-- STATUS BAND: only shown when something needs attention -->
-  <section class="band" id="status-band" aria-live="polite" hidden>
-    <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><circle id="band-ring" cx="14" cy="14" r="12" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 4"/><path id="band-icon" d="M8 14 L12.5 18.5 L20 10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div class="bandText">
-      <div class="kick" id="band-kick"></div>
-      <div class="bandTitle" id="band-title"></div>
-      <div class="bandSub" id="band-sub"></div>
-    </div>
-    <button type="button" class="btn btnO" id="band-cta" hidden>Preview a plan</button>
-    <div class="bandExtra" id="band-extra"></div>
-  </section>
-
-  <!-- FLEET FLOW MAP (queue → sites) -->
-  <section class="card fleetCard" aria-label="Fleet water by site">
-    <div class="fleetHead">
-      <div class="cardTitleRow">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.5 12c5 0 5-6 9-6M7.5 12c5 0 5 6 9 6"/></svg>
-        <h2 class="cardTitle">Fleet equilibrium</h2>
-      </div>
-      <div class="fleetTotal">
-        <span class="fleetNum" id="orb-num">—</span>
-        <span class="fleetLbl"><span>L/h fleet water</span><span id="orb-sub">modeled now</span></span>
-      </div>
-      <div id="ring-tag"></div>
-    </div>
-    <div id="fleet-flow" class="flow"></div>
-    <div class="legend" aria-label="Legend">
-      <span><svg width="14" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="15" rx="3" fill="#F6FAFA" stroke="#B9D3D3" stroke-width="1.4"/><rect x="2.5" y="8" width="9" height="7.5" rx="1.5" fill="#2A9D9F"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5" stroke="#B4410F" stroke-width="1.5"/></svg><strong>Tank</strong> water vs cap (ember line), peak hour</span>
-      <span><svg width="30" height="8" aria-hidden="true"><line x1="2" y1="4" x2="28" y2="4" stroke="#2A9D9F" stroke-width="3" stroke-dasharray="0.1 7" stroke-linecap="round"/></svg><strong>Flowing route</strong> jobs running, thicker = more GPU</span>
-      <span><svg width="30" height="8" aria-hidden="true"><line x1="2" y1="4" x2="28" y2="4" stroke="#0F6E76" stroke-width="2.2" stroke-dasharray="5 4" stroke-linecap="round"/></svg><strong>Proposed</strong> move</span>
-      <span><svg width="30" height="8" aria-hidden="true"><line x1="2" y1="4" x2="28" y2="4" stroke="#0F6E76" stroke-width="3" stroke-linecap="round"/></svg><strong>Applied</strong> move</span>
-    </div>
-
-    <aside class="drawer rise" id="drawer" aria-label="Site details" hidden>
-      <div class="drHead">
-        <div><div class="kick">Site · simulated · this hour</div><div class="drName" id="drawer-title"></div></div>
-        <button type="button" class="btn btnD" id="drawer-close" aria-label="Close site details">Close</button>
-      </div>
-      <div class="drGrid">
-        <div><div class="lbl">GPU load</div><div class="drVal mono" id="dr-util"></div></div>
-        <div><div class="lbl">Water, modeled</div><div class="drVal mono" id="dr-water"></div></div>
-        <div><div class="lbl">Water cap</div><div class="drVal mono" id="dr-cap"></div></div>
-      </div>
-      <div class="drStatus" id="dr-status"></div>
-      <div class="drJobs">Jobs here: <strong id="dr-jobs"></strong></div>
-      <div class="drBasis">Modeled from /api/sites hourly profiles and the jobs assigned this hour.</div>
-    </aside>
-  </section>
-
-  <div class="grid grid--top">
-    <!-- PLAN -->
-    <section class="card cmp" id="cmp" aria-label="Proposed schedule" aria-live="polite">
-      <div class="cardHead">
-        <div class="cardTitleRow">
-          <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 2 L15.4 10.6 L24 13 L15.4 15.4 L13 24 L10.6 15.4 L2 13 L10.6 10.6Z" fill="currentColor"/></svg>
-          <h2 class="cardTitle">Plan preview</h2>
+    <header class="topbar">
+      <div class="crumb"><span>Workspace</span><span aria-hidden="true">/</span><strong>Operator</strong></div>
+      <div class="hdrRight">
+        <div class="clock" role="status" aria-label="Simulation clock">
+          <span class="clockDot blink" aria-hidden="true"></span><span class="clockSim">Now</span><strong class="mono" id="demo-clock">—</strong>
         </div>
-        <span class="cmpTag" id="cmp-tag">No preview</span>
+        <div class="ctlGroup">
+          <button type="button" class="btn btnGhost" id="advance-btn">Advance +1 h</button>
+          <label class="vh" for="advance-hours">Simulated hours</label>
+          <select class="btn btnGhost" id="advance-hours" aria-label="Hours to advance">
+            <option value="1" selected>1 h</option>
+            <option value="3">3 h</option>
+            <option value="6">6 h</option>
+          </select>
+          <button type="button" class="btn btnGhost" id="reset-btn">Reset</button>
+        </div>
+        <div class="profile">
+          <button type="button" class="profileBtn" id="profile-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-menu">
+            <span class="avatar" aria-hidden="true">S</span>
+            <span class="profileName">Shaun</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="profileMenu" id="profile-menu" role="menu" aria-label="Account" hidden>
+            <div class="pmHead">
+              <span class="avatar avatarLg" aria-hidden="true">S</span>
+              <div><div class="pmName">Shaun</div><div class="pmRole">Workspace owner</div></div>
+            </div>
+            <button type="button" class="pmItem" role="menuitem" data-action="profile">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profile
+            </button>
+            <button type="button" class="pmItem" role="menuitem" data-action="settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings
+            </button>
+            <button type="button" class="pmItem" role="menuitemcheckbox" aria-checked="false" id="theme-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span id="theme-label">Dark mode</span><span class="pmSwitch" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="pmItem" role="menuitem" data-action="switch">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3l4 4-4 4M20 7H8M8 21l-4-4 4-4M4 17h12"/></svg>Switch account
+            </button>
+            <div class="pmSep" role="separator"></div>
+            <button type="button" class="pmItem isDanger" role="menuitem" data-action="logout">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Log out
+            </button>
+          </div>
+        </div>
       </div>
-      <div id="preview-panel"></div>
+    </header>
+
+    <section class="welcome" id="sec-overview">
+      <div class="welcomeText">
+        <span class="kick">Operator</span>
+        <h2 class="pageTitle">Fleet overview</h2>
+        <p class="pageSub"><span>Water and GPU load across every site, right now.</span></p>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4.5 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-6.5 6-11z"/></svg></span>
+          <div><div class="statVal mono" id="stat-water">—</div><div class="statLbl">Fleet water, L/h</div></div>
+        </div>
+        <div class="stat">
+          <span class="statIcon" id="stat-over-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 21 19H3z"/><path d="M12 10v4M12 17v.01"/></svg></span>
+          <div><div class="statVal mono" id="stat-over">—</div><div class="statLbl">Sites over cap</div></div>
+        </div>
+        <div class="stat">
+          <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg></span>
+          <div><div class="statVal mono" id="stat-jobs">—</div><div class="statLbl">Jobs running · queued</div></div>
+        </div>
+        <button type="button" class="btn btnP btnNew" id="schedule-open" aria-haspopup="dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          New schedule
+        </button>
+      </div>
     </section>
-    <section class="card chartSec" aria-label="Hourly water chart">
-      <div class="cardHead">
-        <div class="cardTitleRow">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M7 15l4-5 3 3 5-6"/></svg>
-          <h2 class="cardTitle" id="chart-title">Water by hour</h2>
+
+    <!-- VISUAL DEMO controls (only with ?demo=1 / the toggle) -->
+    <section class="director" id="director" aria-label="Visual demo controls" hidden>
+      <span class="kick">Visual demo</span>
+      <div class="segGroup" role="group" aria-label="Scenario">
+        <button type="button" class="seg" id="d-routine" aria-pressed="true">Routine</button>
+        <button type="button" class="seg" id="d-emergency" aria-pressed="false">Emergency</button>
+      </div>
+      <div class="segGroup" role="group" aria-label="Sample preview outcome">
+        <button type="button" class="seg" id="d-feasible" aria-pressed="false">Feasible</button>
+        <button type="button" class="seg" id="d-stale" aria-pressed="false">Stale</button>
+        <button type="button" class="seg" id="d-infeasible" aria-pressed="false">Infeasible</button>
+      </div>
+      <span id="director-tag"></span>
+    </section>
+
+    <!-- STATUS BAND: only shown when something needs attention -->
+    <section class="band" id="status-band" aria-live="polite" hidden>
+      <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><circle id="band-ring" cx="14" cy="14" r="12" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 4"/><path id="band-icon" d="M8 14 L12.5 18.5 L20 10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="bandText">
+        <div class="kick" id="band-kick"></div>
+        <div class="bandTitle" id="band-title"></div>
+        <div class="bandSub" id="band-sub"></div>
+      </div>
+      <button type="button" class="btn btnO" id="band-cta" hidden>Preview a plan</button>
+      <button type="button" class="bandX" id="band-close" aria-label="Dismiss notice" title="Dismiss">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <div class="bandExtra" id="band-extra"></div>
+    </section>
+
+    <!-- FLEET FLOW MAP (queue → sites) -->
+    <section class="card fleetCard" id="sec-fleet" aria-label="Fleet water by site">
+      <div class="fleetHead">
+        <div class="fleetMain">
+          <div class="cardTitleRow">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.5 12c5 0 5-6 9-6M7.5 12c5 0 5 6 9 6"/></svg>
+            <h2 class="cardTitle">Fleet equilibrium</h2>
+            <div id="ring-tag"></div>
+          </div>
+          <div class="fleetTotal">
+            <span class="fleetNum mono" id="orb-num">—</span>
+            <span class="fleetUnit">L/h</span>
+            <span class="fleetLbl" id="orb-sub">Fleet water right now</span>
+          </div>
         </div>
-        <div class="chartLegend">
-          <span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" stroke="#2A9D9F" stroke-width="2.5" stroke-linecap="round"/></svg>Current</span>
-          <span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" stroke="#0B4F58" stroke-width="2.5" stroke-dasharray="5 4"/></svg>Proposed / applied</span>
-          <span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" stroke="#E07A3F" stroke-width="2" stroke-dasharray="6 4"/></svg>Water cap</span>
+        <div class="legend" aria-label="Legend">
+          <span title="Water level against the site's cap (ember line) at its peak hour"><svg width="14" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="15" rx="3" fill="none" stroke="var(--line-2)" stroke-width="1.4"/><rect x="2.5" y="8" width="9" height="7.5" rx="1.5" fill="var(--teal)"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5" stroke="var(--ember)" stroke-width="1.5"/></svg><strong>Water</strong> vs cap</span>
+          <span title="Jobs running on this route; thicker means more GPUs"><svg width="28" height="8" aria-hidden="true"><line x1="2" y1="4" x2="26" y2="4" stroke="var(--teal)" stroke-width="3" stroke-dasharray="0.1 6" stroke-linecap="round"/></svg><strong>Running</strong></span>
+          <span><svg width="28" height="8" aria-hidden="true"><line x1="2" y1="4" x2="26" y2="4" stroke="var(--violet)" stroke-width="2.2" stroke-dasharray="5 4" stroke-linecap="round"/></svg><strong>Proposed</strong> move</span>
+          <span><svg width="28" height="8" aria-hidden="true"><line x1="2" y1="4" x2="26" y2="4" stroke="var(--violet)" stroke-width="3" stroke-linecap="round"/></svg><strong>Applied</strong> move</span>
         </div>
       </div>
-      <svg id="water-chart" class="chartSvg" viewBox="0 0 800 270" role="img" aria-label="Hourly modeled water"></svg>
-      <div class="chartNote">Hours in UTC · modeled from site hourly profiles and assigned jobs</div>
-    </section>
-  </div>
+      <div id="fleet-flow" class="flow"></div>
 
-  <section class="card queueSec" aria-label="Shared workload queue">
+      <aside class="drawer rise" id="drawer" aria-label="Site details" hidden>
+        <div class="drHead">
+          <div><div class="kick">Site · this hour</div><div class="drName" id="drawer-title"></div></div>
+          <button type="button" class="btn btnD" id="drawer-close" aria-label="Close site details">Close</button>
+        </div>
+        <div class="drGrid">
+          <div><div class="lbl">GPU load</div><div class="drVal mono" id="dr-util"></div></div>
+          <div><div class="lbl">Water</div><div class="drVal mono" id="dr-water"></div></div>
+          <div><div class="lbl">Water cap</div><div class="drVal mono" id="dr-cap"></div></div>
+        </div>
+        <div class="drStatus" id="dr-status"></div>
+        <div class="drJobs">Jobs here: <strong id="dr-jobs"></strong></div>
+      </aside>
+    </section>
+
+    <div class="grid grid--top" id="sec-water">
+      <section class="card chartSec" aria-label="Hourly water chart">
+        <div class="cardHead">
+          <div class="cardTitleRow">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M7 15l4-5 3 3 5-6"/></svg>
+            <h2 class="cardTitle" id="chart-title">Water by hour</h2>
+          </div>
+          <div class="chartLegend">
+            <span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" stroke="var(--teal)" stroke-width="2.5" stroke-linecap="round"/></svg>Current</span>
+            <span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" stroke="var(--violet)" stroke-width="2.5" stroke-dasharray="5 4"/></svg>Proposed / applied</span>
+            <span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" stroke="var(--ember)" stroke-width="2" stroke-dasharray="6 4"/></svg>Water cap</span>
+          </div>
+        </div>
+        <svg id="water-chart" class="chartSvg" viewBox="0 0 800 270" role="img" aria-label="Hourly water"></svg>
+        <div class="chartNote">Hours in UTC</div>
+      </section>
+      <!-- PLAN -->
+      <section class="card cmp" id="cmp" aria-label="Proposed schedule" aria-live="polite">
+        <div class="cardHead">
+          <div class="cardTitleRow">
+            <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 2 L15.4 10.6 L24 13 L15.4 15.4 L13 24 L10.6 15.4 L2 13 L10.6 10.6Z" fill="currentColor"/></svg>
+            <h2 class="cardTitle">Plan preview</h2>
+          </div>
+          <span class="cmpTag" id="cmp-tag">No preview</span>
+        </div>
+        <div id="preview-panel"></div>
+      </section>
+    </div>
+
+    <section class="card queueSec" id="sec-queue" aria-label="Shared workload queue">
       <div class="cardHead">
         <div class="cardTitleRow">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9"/></svg>
@@ -164,18 +248,25 @@
       </div>
       <div id="op-error" class="errBox" role="alert" hidden></div>
       <div class="queueBody">
-      <div class="qScroll" tabindex="0" aria-label="Queue table">
-        <table class="qTable">
-          <thead><tr><th scope="col">Job</th><th scope="col">Status</th><th scope="col">Site</th><th scope="col">Finish / deadline</th></tr></thead>
-          <tbody id="jobs-body"></tbody>
-        </table>
+        <div class="qScroll" tabindex="0" aria-label="Queue table">
+          <table class="qTable">
+            <thead><tr><th scope="col">Job</th><th scope="col">Status</th><th scope="col">Site</th><th scope="col">Finish / deadline</th></tr></thead>
+            <tbody id="jobs-body"></tbody>
+          </table>
+        </div>
+        <div class="comp">
+          <div class="kick" id="comp-kick">Cap compliance</div>
+          <div id="compliance" class="comp"></div>
+        </div>
       </div>
-      <div class="comp">
-        <div class="kick" id="comp-kick">Cap compliance · modeled</div>
-        <div id="compliance" class="comp"></div>
-      </div>
-      </div>
-  </section>
+    </section>
+
+    <footer class="foot" id="foot">
+      <span>© <span id="foot-year">2026</span> aqualibri.us. All rights reserved.</span>
+      <a href="https://aqualibri.us" rel="noopener">aqualibri.us</a>
+    </footer>
+  </div>
+</div>
 
   <!-- NEW SCHEDULE (sheet) -->
   <dialog class="sheet" id="schedule-sheet" aria-labelledby="schedule-title">
@@ -189,7 +280,7 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
       </div>
-      <p class="sheetSub">Describe a water restriction or a cost budget. The solver proposes moves; nothing changes until you apply.</p>
+      <p class="sheetSub">Set a water restriction or a cost budget. You get a plan to review; nothing changes until you apply it.</p>
       <div role="group" aria-label="Mode" class="modeGrp">
         <button type="button" class="seg" id="mode-routine" aria-pressed="false">Routine</button>
         <button type="button" class="seg" id="mode-emergency" aria-pressed="true">Emergency</button>
@@ -204,24 +295,20 @@
         <label class="lbl" for="budget">Extra cost budget (USD)</label><input id="budget" class="fld mono" type="number" min="0" step="1" inputmode="decimal" value="40" />
       </div>
 
-      <div><label class="lbl" for="instruction">Note for Gemini (optional)</label>
-        <textarea id="instruction" rows="2" class="fld"></textarea></div>
+      <div><label class="lbl" for="instruction">Notes (optional)</label>
+        <textarea id="instruction" rows="2" class="fld" placeholder="e.g. keep JOB-014 in the US"></textarea></div>
 
       <div id="cmd-error" class="errBox" role="alert" hidden></div>
 
       <div class="cmdRow">
         <button type="button" class="btn btnBlue" id="preview-btn">Preview schedule</button>
-        <span class="cmdNote">Nothing changes until you apply.</span>
       </div>
     </div>
   </dialog>
 
-  <footer class="foot" id="foot">Figures come from /api/sites, /api/jobs, /api/demo and /api/reallocation/*. GPU load and water are modeled from those fields. Unfinished endpoints say so.</footer>
-</div>
-
-  <script src="/static/js/api.js?v=8"></script>
-  <script src="/static/js/ui.js?v=8"></script>
-  <script src="/static/js/demo-data.js?v=8"></script>
-  <script src="/static/js/operator.js?v=8"></script>
+  <script src="/static/js/api.js?v=14"></script>
+  <script src="/static/js/ui.js?v=14"></script>
+  <script src="/static/js/demo-data.js?v=14"></script>
+  <script src="/static/js/operator.js?v=14"></script>
 </body>
 </html>

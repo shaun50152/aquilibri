@@ -3,156 +3,233 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
   <title>AquaLibri Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="icon" href="data:," />
-  <link rel="stylesheet" href="/static/css/styles.css?v=8" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Cg fill=%22none%22 stroke=%22%231FA8FF%22 stroke-width=%222.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M27 15.5C24.5 11.5 22.3 8 20 4 14 13 5 21.5 5 31.5a15.5 15.5 0 0 0 25.5 11.7M6.5 34c3.5-7.5 13-8.5 15-2 1.2 4-2.5 6.6-4.9 4.4M27 22h18M36 18.5V38M31 38h10%22/%3E%3C/g%3E%3C/svg%3E" />
+  <script>
+    /* set the theme before first paint: saved choice, else the system setting */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("aq.theme"); } catch (e) {}
+      if (t !== "light" && t !== "dark") t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/css/styles.css?v=14" />
 </head>
 <body class="page--portal">
-<div class="shell">
+<div class="app">
 
-  <header class="topbar">
-    <div class="brand" id="brand"><span class="brandName">AquaLibri</span></div>
-    <nav aria-label="Primary" class="nav">
-      <a class="navLink" id="nav-portal" href="/portal" aria-current="page">Portal</a>
-      <a class="navLink" id="nav-operator" href="/operator">Operator</a>
+  <aside class="side" aria-label="Sidebar">
+    <div class="sideTop">
+      <a class="brand" id="brand" href="/portal"><span class="brandName"><span class="brandAqua">Aqua</span>Libri</span></a>
+    </div>
+    <nav class="sideNav" aria-label="Primary">
+      <div class="sideGroup">Workspace</div>
+      <a class="sideLink" id="nav-portal" href="/portal" aria-current="page" title="Portal">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>
+        <span>Portal</span>
+      </a>
+      <a class="sideLink" id="nav-operator" href="/operator" title="Operator">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+        <span>Operator</span>
+      </a>
+      <div class="sideGroup">On this page</div>
+      <a class="sideLink" href="#sec-overview" title="Overview">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
+        <span>Overview</span>
+      </a>
+      <a class="sideLink" href="#sec-place" title="Where it runs">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.5 12c5 0 5-6 9-6M7.5 12c5 0 5 6 9 6"/></svg>
+        <span>Where it runs</span>
+      </a>
+      <a class="sideLink" href="#sec-jobs" title="Your jobs">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        <span>Your jobs</span>
+      </a>
     </nav>
-    <div class="hdrRight">
-      <div class="clock" role="status" aria-label="Simulation clock">
-        <span class="clockDot blink" aria-hidden="true"></span><span class="clockSim">Sim</span><strong class="mono" id="demo-clock">—</strong>
-      </div>
-      <button type="button" class="btn btnGhost" id="visual-demo-toggle" aria-pressed="false">Visual demo</button>
-    </div>
-  </header>
-
-  <section class="welcome">
-    <div class="welcomeText">
-      <span class="kick" id="hero-kick">User portal</span>
-      <h1 class="pageTitle">Welcome back</h1>
-      <p class="pageSub"><span id="hero-sub">Send a workload and we place it where water is easiest.</span> <span class="badge" id="sim-banner">SIMULATED · NO REAL GPUS</span></p>
-    </div>
-    <div class="stats">
-      <div class="stat">
-        <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></span>
-        <div><div class="statVal mono" id="stat-jobs">—</div><div class="statLbl">Your jobs</div></div>
-      </div>
-      <div class="stat">
-        <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></span>
-        <div><div class="statVal mono" id="stat-running">—</div><div class="statLbl">Running now</div></div>
-      </div>
-      <div class="stat">
-        <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span>
-        <div><div class="statVal mono" id="stat-next">—</div><div class="statLbl">Next start (UTC)</div></div>
-      </div>
-      <button type="button" class="btn btnP btnNew" id="new-open" aria-haspopup="dialog">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        New workload
+    <div class="sideFoot">
+      <button type="button" class="btn btnGhost sideDemo" id="visual-demo-toggle" aria-pressed="false" title="Visual demo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4l14 8-14 8z"/></svg>
+        <span>Visual demo</span>
       </button>
     </div>
-  </section>
+  </aside>
 
-  <div id="demo-error" class="errBox" role="alert" hidden></div>
+  <div class="shell">
 
-  <!-- VISUAL DEMO controls (only with ?demo=1 / the toggle) -->
-  <section class="director" id="director" aria-label="Visual demo controls" hidden>
-    <span class="kick">Visual demo</span>
-    <button type="button" class="btn btnGhost" id="d-move">Operator applies the move</button>
-    <span id="director-tag"></span>
-  </section>
+    <header class="topbar">
+      <div class="crumb"><span>Workspace</span><span aria-hidden="true">/</span><strong>Portal</strong></div>
+      <div class="hdrRight">
+        <div class="clock" role="status" aria-label="Simulation clock">
+          <span class="clockDot blink" aria-hidden="true"></span><span class="clockSim">Now</span><strong class="mono" id="demo-clock">—</strong>
+        </div>
+        <div class="profile">
+          <button type="button" class="profileBtn" id="profile-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-menu">
+            <span class="avatar" aria-hidden="true">S</span>
+            <span class="profileName">Shaun</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="profileMenu" id="profile-menu" role="menu" aria-label="Account" hidden>
+            <div class="pmHead">
+              <span class="avatar avatarLg" aria-hidden="true">S</span>
+              <div><div class="pmName">Shaun</div><div class="pmRole">Workspace owner</div></div>
+            </div>
+            <button type="button" class="pmItem" role="menuitem" data-action="profile">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profile
+            </button>
+            <button type="button" class="pmItem" role="menuitem" data-action="settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings
+            </button>
+            <button type="button" class="pmItem" role="menuitemcheckbox" aria-checked="false" id="theme-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span id="theme-label">Dark mode</span><span class="pmSwitch" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="pmItem" role="menuitem" data-action="switch">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3l4 4-4 4M20 7H8M8 21l-4-4 4-4M4 17h12"/></svg>Switch account
+            </button>
+            <div class="pmSep" role="separator"></div>
+            <button type="button" class="pmItem isDanger" role="menuitem" data-action="logout">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Log out
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
 
-  <!-- Completion notification -->
-  <div class="notice pop" id="notice" role="status" hidden>
-    <svg width="28" height="28" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="14" fill="#0F6E76"/><path d="M8 15.5 L13 20.5 L22 10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div class="noticeBody"><div class="noticeTitle" id="notice-title"></div><div class="noticeText" id="notice-text"></div></div>
-    <button type="button" class="btn btnP" id="notice-dismiss">Got it</button>
-  </div>
+    <section class="welcome" id="sec-overview">
+      <div class="welcomeText">
+        <span class="kick">User portal</span>
+        <h1 class="pageTitle">Welcome back, <span class="gradText">Shaun</span></h1>
+        <p class="pageSub"><span id="hero-sub">Send a workload and we place it where water is easiest.</span></p>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></span>
+          <div><div class="statVal mono" id="stat-jobs">—</div><div class="statLbl">Your jobs</div></div>
+        </div>
+        <div class="stat">
+          <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></span>
+          <div><div class="statVal mono" id="stat-running">—</div><div class="statLbl">Running now</div></div>
+        </div>
+        <div class="stat">
+          <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span>
+          <div><div class="statVal mono" id="stat-next">—</div><div class="statLbl">Next start (UTC)</div></div>
+        </div>
+        <button type="button" class="btn btnP btnNew" id="new-open" aria-haspopup="dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          New workload
+        </button>
+      </div>
+    </section>
 
-  <div class="grid grid--portal">
+    <div id="demo-error" class="errBox" role="alert" hidden></div>
 
-    <!-- PLACEMENT: queue → sites -->
-    <section class="card placeCard" aria-label="Where your jobs run">
+    <!-- VISUAL DEMO controls (only with ?demo=1 / the toggle) -->
+    <section class="director" id="director" aria-label="Visual demo controls" hidden>
+      <span class="kick">Visual demo</span>
+      <button type="button" class="btn btnGhost" id="d-move">Operator applies the move</button>
+      <span id="director-tag"></span>
+    </section>
+
+    <!-- Completion notification -->
+    <div class="notice pop" id="notice" role="status" hidden>
+      <svg width="28" height="28" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="14" fill="var(--teal)"/><path d="M8 15.5 L13 20.5 L22 10" fill="none" stroke="var(--on-teal)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="noticeBody"><div class="noticeTitle" id="notice-title"></div><div class="noticeText" id="notice-text"></div></div>
+      <button type="button" class="btn btnP" id="notice-dismiss">Got it</button>
+    </div>
+
+    <div class="grid grid--portal" id="sec-place">
+
+      <!-- PLACEMENT: queue → sites -->
+      <section class="card placeCard" aria-label="Where your jobs run">
+        <div class="cardHead">
+          <div class="cardTitleRow">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.5 12c5 0 5-6 9-6M7.5 12c5 0 5 6 9 6"/></svg>
+            <h2 class="cardTitle">Where it runs</h2>
+          </div>
+          <span class="secNote" id="place-note"></span>
+        </div>
+        <div id="place-flow" class="flow"></div>
+        <p class="miniCap" id="mini-caption"></p>
+      </section>
+      <!-- DETAIL (vertical, beside the flow map) -->
+      <section class="card detail" id="job-detail" aria-label="Job details" aria-live="polite" hidden>
+        <div class="dHead">
+          <span class="dIcon" id="d-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="3"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg></span>
+          <div class="dHeadText">
+            <h2 class="dTitle" id="d-title"></h2>
+            <div class="dSpec" id="d-spec"></div>
+          </div>
+          <span class="dPill" id="d-pill"></span>
+        </div>
+
+        <div class="moved pop" id="moved-notice" hidden>
+          <span class="movedChip">● Moved ✓</span>
+          <div class="movedText"><strong id="moved-route"></strong> <span id="moved-text"></span></div>
+        </div>
+        <div class="failBox" id="d-failed" role="alert" hidden></div>
+
+        <dl class="dFacts">
+          <div class="dFact dFactWide"><dt>Data center</dt><dd id="d-site"></dd></div>
+          <div class="dFact"><dt>Starts (UTC)</dt><dd class="mono" id="d-start"></dd></div>
+          <div class="dFact"><dt>Deadline (UTC)</dt><dd class="mono" id="d-dl"></dd></div>
+        </dl>
+
+        <div class="vj">
+          <div class="vjRail" aria-hidden="true"><div class="vjFill" id="j-fill"></div></div>
+          <ol class="vjSteps" id="j-steps" aria-label="Job progress"></ol>
+        </div>
+
+        <div class="result pop" id="d-grok" hidden>
+          <div class="resBody">
+            <div class="kick">Summary</div>
+            <div class="resName" id="d-grok-title">Run summary</div>
+            <div class="resNote" id="d-grok-text"></div>
+          </div>
+        </div>
+
+        <div class="result pop" id="d-result" hidden>
+          <div class="resBody"><div class="resName" id="d-file"></div><div class="resNote">Output file</div></div>
+          <span id="d-download"></span>
+        </div>
+
+        <details class="actBox" id="act-box">
+          <summary><span class="actTitle">Activity</span><span class="actCount" id="act-count"></span></summary>
+          <ol class="actList" id="activity-log"></ol>
+        </details>
+      </section>
+    </div>
+
+    <!-- JOBS (full width) -->
+    <section class="card jobsCard" id="sec-jobs" aria-label="Your jobs">
       <div class="cardHead">
         <div class="cardTitleRow">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.5 12c5 0 5-6 9-6M7.5 12c5 0 5 6 9 6"/></svg>
-          <h2 class="cardTitle">Where it runs</h2>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+          <h2 class="cardTitle">Your jobs</h2>
         </div>
-        <span class="secNote" id="place-note"></span>
+        <span class="listNote" id="list-note"></span>
       </div>
-      <div id="place-flow" class="flow"></div>
-      <p class="miniCap" id="mini-caption">Loading simulated sites…</p>
+      <div id="list-tag"></div>
+      <div class="stack10" id="jobs-skeleton" aria-busy="true" aria-label="Loading jobs"><div class="shim"></div><div class="shim"></div><div class="shim"></div></div>
+      <div id="list-error" class="errBox" role="alert" hidden></div>
+      <div class="empty" id="jobs-empty" hidden>
+        <div class="emptyTitle">No jobs yet</div>
+        <div class="emptyText">Submit your first workload to see it here.</div>
+        <button type="button" class="btn btnP" id="empty-new">New workload</button>
+      </div>
+      <div class="stack10" id="jobs-body"></div>
     </section>
-    <!-- DETAIL (vertical, beside the flow map) -->
-    <section class="card detail" id="job-detail" aria-label="Job details" aria-live="polite" hidden>
-      <div class="dHead">
-        <span class="dIcon" id="d-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="3"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg></span>
-        <div class="dHeadText">
-          <h2 class="dTitle" id="d-title"></h2>
-          <div class="dSpec" id="d-spec"></div>
-        </div>
-        <span class="dPill" id="d-pill"></span>
-      </div>
 
-      <div class="moved pop" id="moved-notice" hidden>
-        <span class="movedChip">● Moved ✓</span>
-        <div class="movedText"><strong id="moved-route"></strong> <span id="moved-text"></span></div>
-      </div>
-      <div class="failBox" id="d-failed" role="alert" hidden></div>
 
-      <dl class="dFacts">
-        <div class="dFact dFactWide"><dt>Data center</dt><dd id="d-site"></dd></div>
-        <div class="dFact"><dt>Starts (UTC)</dt><dd class="mono" id="d-start"></dd></div>
-        <div class="dFact"><dt>Deadline (UTC)</dt><dd class="mono" id="d-dl"></dd></div>
-      </dl>
-
-      <div class="vj">
-        <div class="vjRail" aria-hidden="true"><div class="vjFill" id="j-fill"></div></div>
-        <ol class="vjSteps" id="j-steps" aria-label="Job progress"></ol>
-      </div>
-      <p class="jBasis">Progress basis: simulated clock minus scheduled start. Not GPU telemetry. Earliest start <span class="mono" id="d-es"></span>.</p>
-
-      <div class="result pop" id="d-grok" hidden>
-        <div class="resBody">
-          <div class="kick">Grok executive summary</div>
-          <div class="resName" id="d-grok-title">xAI ops brief</div>
-          <div class="resNote" id="d-grok-text"></div>
-        </div>
-      </div>
-
-      <div class="result pop" id="d-result" hidden>
-        <div class="resBody"><div class="resName" id="d-file"></div><div class="resNote">Sample output from the simulation, not a real GPU run.</div></div>
-        <span id="d-download"></span>
-      </div>
-
-      <details class="actBox" id="act-box">
-        <summary><span class="actTitle">Activity</span><span class="actCount" id="act-count"></span></summary>
-        <p class="actNote">Recorded in this browser while this page was open.</p>
-        <ol class="actList" id="activity-log"></ol>
-      </details>
-    </section>
+    <footer class="foot" id="foot">
+      <span>© <span id="foot-year">2026</span> aqualibri.us. All rights reserved.</span>
+      <a href="https://aqualibri.us" rel="noopener">aqualibri.us</a>
+    </footer>
   </div>
-
-  <!-- JOBS (full width) -->
-  <section class="card jobsCard" aria-label="Your jobs">
-    <div class="cardHead">
-      <div class="cardTitleRow">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
-        <h2 class="cardTitle">Your jobs</h2>
-      </div>
-      <span class="listNote" id="list-note"></span>
-    </div>
-    <div id="list-tag"></div>
-    <div class="stack10" id="jobs-skeleton" aria-busy="true" aria-label="Loading jobs"><div class="shim"></div><div class="shim"></div><div class="shim"></div></div>
-    <div id="list-error" class="errBox" role="alert" hidden></div>
-    <div class="empty" id="jobs-empty" hidden>
-      <div class="emptyTitle">No jobs yet</div>
-      <div class="emptyText">Submit your first workload. It appears here the moment the server accepts it.</div>
-      <button type="button" class="btn btnP" id="empty-new">New workload</button>
-    </div>
-    <div class="stack10" id="jobs-body"></div>
-  </section>
-
+</div>
 
   <!-- NEW WORKLOAD (sheet) -->
   <dialog class="sheet" id="new-sheet" aria-labelledby="new-title">
@@ -166,10 +243,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
       </div>
-      <p class="sheetSub">Pick a template and a window. It joins the queue, and the scheduler routes it to the site with the easiest water.</p>
+      <p class="sheetSub">Pick a template and a time window. We place it on the site with the most water headroom.</p>
       <form id="job-form" class="form" novalidate>
         <fieldset class="tplSet">
-          <legend class="lbl">Template · GPUs and runtime come from it</legend>
+          <legend class="lbl">Template</legend>
           <label class="tplCard">
             <input class="vh" type="radio" name="template" value="inference_batch" />
             <span class="tplHead"><strong>Inference batch</strong><span class="tplBlurb">Short scoring runs</span></span>
@@ -208,11 +285,9 @@
     </div>
   </dialog>
 
-</div>
-
-  <script src="/static/js/api.js?v=8"></script>
-  <script src="/static/js/ui.js?v=8"></script>
-  <script src="/static/js/demo-data.js?v=8"></script>
-  <script src="/static/js/portal.js?v=8"></script>
+  <script src="/static/js/api.js?v=14"></script>
+  <script src="/static/js/ui.js?v=14"></script>
+  <script src="/static/js/demo-data.js?v=14"></script>
+  <script src="/static/js/portal.js?v=14"></script>
 </body>
 </html>

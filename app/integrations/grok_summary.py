@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+import httpx
+
 from app.config import get_settings
 
 
@@ -11,25 +13,43 @@ class GrokSummaryError(RuntimeError):
     """Raised when Grok is misconfigured or the completion call fails."""
 
 
-def _client():
+GROK_TIMEOUT_SECONDS = 30.0
+
+
+def _chat_completion(payload: dict[str, Any]) -> dict[str, Any]:
+    """POST to xAI's OpenAI-compatible chat endpoint with plain httpx.
+
+    The openai SDK pulls in compiled wheels (jiter) that Windows Application Control
+    policies can block, so this stays on pure-Python httpx.
+    """
     settings = get_settings()
     key = settings.grok_api_key.strip()
     if not key:
         raise GrokSummaryError("GROK_API_KEY is not configured")
+    base = (settings.grok_base_url.strip() or "https://api.x.ai/v1").rstrip("/")
     try:
-        from openai import OpenAI
-    except ImportError as exc:
-        raise GrokSummaryError(
-            "openai package is required for Grok summaries (pip install openai)"
-        ) from exc
-    return OpenAI(api_key=key, base_url=settings.grok_base_url.strip() or "https://api.x.ai/v1")
+        res = httpx.post(
+            f"{base}/chat/completions",
+            headers={"Authorization": f"Bearer {key}"},
+            json=payload,
+            timeout=GROK_TIMEOUT_SECONDS,
+        )
+    except httpx.HTTPError as exc:
+        raise GrokSummaryError(f"Grok summary request failed: {exc}") from exc
+    if res.status_code >= 400:
+        try:
+            body: Any = res.json()
+        except ValueError:
+            body = res.text
+        raise GrokSummaryError(_format_xai_error(res.status_code, body))
+    try:
+        return res.json()
+    except ValueError as exc:
+        raise GrokSummaryError("Grok returned an empty or unexpected response") from exc
 
 
-def _format_xai_error(exc: Exception) -> str:
-    """Pull the human-readable message out of an OpenAI/xAI APIError."""
-    # openai.APIStatusError exposes .status_code and .response / .body
-    status = getattr(exc, "status_code", None)
-    body = getattr(exc, "body", None)
+def _format_xai_error(status: Optional[int], body: Any) -> str:
+    """Pull the human-readable message out of an xAI error response."""
     if isinstance(body, dict):
         msg = body.get("error") or body.get("message") or body
         code = body.get("code")
@@ -42,14 +62,14 @@ def _format_xai_error(exc: Exception) -> str:
                 f"Details: {msg}"
             )
         return f"xAI error ({status}): {msg}"
-    text = str(exc)
+    text = str(body)
     if "credits" in text.lower() or "permission-denied" in text.lower():
         return (
             "xAI rejected the key: your team has no API credits yet. "
             "Add credits at https://console.x.ai/ then retry. "
             f"Details: {text}"
         )
-    return f"Grok summary request failed: {text}"
+    return f"xAI error ({status}): {text}"
 
 
 def generate_job_summary(job_data: dict[str, Any]) -> str:
@@ -79,11 +99,10 @@ def generate_job_summary(job_data: dict[str, Any]) -> str:
         f"Scheduled start (UTC): {job_data.get('scheduled_start')}\n"
     )
 
-    try:
-        client = _client()
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
+    response = _chat_completion(
+        {
+            "model": model,
+            "messages": [
                 {
                     "role": "system",
                     "content": (
@@ -93,17 +112,14 @@ def generate_job_summary(job_data: dict[str, Any]) -> str:
                 },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.3,
-            max_tokens=160,
-        )
-    except GrokSummaryError:
-        raise
-    except Exception as exc:  # noqa: BLE001
-        raise GrokSummaryError(_format_xai_error(exc)) from exc
+            "temperature": 0.3,
+            "max_tokens": 160,
+        }
+    )
 
     try:
-        text = (response.choices[0].message.content or "").strip()
-    except (AttributeError, IndexError, TypeError) as exc:
+        text = (response["choices"][0]["message"]["content"] or "").strip()
+    except (KeyError, IndexError, TypeError, AttributeError) as exc:
         raise GrokSummaryError("Grok returned an empty or unexpected response") from exc
     if not text:
         raise GrokSummaryError("Grok returned an empty summary")
