@@ -8,6 +8,7 @@ from app.schemas.scheduling import (
     ReallocationPreviewResponse,
 )
 from app.services import demo_worker, scheduling_service
+from app.services.scheduling_service import PreviewRequestError
 from app.state import get_session_state
 
 router = APIRouter(tags=["scheduling", "demo"])
@@ -23,15 +24,22 @@ def _not_implemented(detail: str) -> JSONResponse:
 @router.post(
     "/api/reallocation/preview",
     response_model=ReallocationPreviewResponse,
-    responses={501: {"description": "Not implemented"}},
+    responses={
+        422: {"description": "Invalid structured preview request"},
+        501: {"description": "Not implemented"},
+    },
 )
 def reallocation_preview(request: ReallocationPreviewRequest):
+    state = get_session_state()
     try:
-        state = get_session_state()
-        scheduling_service.preview_reallocation(request, state.revision)
+        return scheduling_service.preview_reallocation(request, state)
+    except PreviewRequestError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     except NotImplementedError as exc:
         return _not_implemented(str(exc))
-    raise HTTPException(status_code=500, detail="Unexpected preview success in scaffold.")
 
 
 @router.post(

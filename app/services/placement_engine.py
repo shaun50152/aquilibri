@@ -121,6 +121,71 @@ class CandidateGenerationResult:
     reconsider_job_ids: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class WaterCapOverride:
+    """Temporary water cap applied to one site over [start, end)."""
+
+    site_id: str
+    start: datetime
+    end: datetime
+    water_cap_liters_per_hour: float
+
+
+class OptimizeObjective(str, Enum):
+    min_cost = "min_cost"
+    min_water = "min_water"
+
+
+@dataclass(frozen=True)
+class OptimizeResult:
+    status: FeasibilityStatus
+    selected: dict[str, PlacementCandidate] = field(default_factory=dict)
+    unfulfilled_job_ids: tuple[str, ...] = ()
+    objective_value: Optional[float] = None
+    reason: Optional[str] = None
+    validated: bool = False
+
+
+@dataclass(frozen=True)
+class JobDeadlineResult:
+    job_id: str
+    met_deadline: bool
+    projected_completion: Optional[datetime]
+    unfulfilled: bool
+    unfulfilled_reason: Optional[str]
+
+
+@dataclass(frozen=True)
+class SiteEvaluation:
+    site_id: str
+    water_liters: float
+    water_cap_violations: int
+    energy_kwh: float
+    energy_cost_usd: float
+    peak_withdrawal_lph: float
+    peak_withdrawal_at: Optional[datetime]
+    within_cap: bool
+    active_cap_at_peak: Optional[float]
+
+
+@dataclass(frozen=True)
+class ScheduleEvaluation:
+    horizon_start: datetime
+    horizon_end: datetime
+    total_water_liters: float
+    total_energy_kwh: float
+    energy_cost_usd: float
+    water_cost_usd: float
+    miss_penalties_usd: float
+    total_cost_usd: float
+    jobs_on_time: int
+    jobs_late: int
+    jobs_unfulfilled: int
+    per_site: tuple[SiteEvaluation, ...]
+    deadline_outcomes: tuple[JobDeadlineResult, ...]
+    diagnostics: tuple[Diagnostic, ...]
+
+
 # ---------------------------------------------------------------------------
 # Time helpers
 # ---------------------------------------------------------------------------
@@ -148,6 +213,28 @@ def _overlap(
     if end <= start:
         return None
     return start, end
+
+
+def effective_water_cap(
+    row_cap: Optional[float],
+    site_id: str,
+    left: datetime,
+    right: datetime,
+    overrides: Optional[list[WaterCapOverride]],
+) -> Optional[float]:
+    """Stricter of profile cap and any overlapping temporary overrides."""
+    caps: list[float] = []
+    if row_cap is not None:
+        caps.append(row_cap)
+    if overrides:
+        for ov in overrides:
+            if ov.site_id != site_id:
+                continue
+            if ov.start < right and ov.end > left:
+                caps.append(ov.water_cap_liters_per_hour)
+    if not caps:
+        return None
+    return min(caps)
 
 
 # ---------------------------------------------------------------------------
@@ -365,6 +452,7 @@ def evaluate_capacity_against_reservations(
     placement_finish: datetime,
     reserved_contributions: list[IntervalContribution],
     job_id: Optional[str] = None,
+    water_cap_overrides: Optional[list[WaterCapOverride]] = None,
 ) -> tuple[Optional[tuple[IntervalContribution, ...]], list[Diagnostic]]:
     """Return contributions if placement fits with reservations; else diagnostics."""
     contribs, missing = build_contributions(
@@ -390,6 +478,10 @@ def evaluate_capacity_against_reservations(
             continue
         boundaries.extend([c.interval_start, c.interval_end])
     boundaries.extend([placement_start, placement_finish])
+    if water_cap_overrides:
+        for ov in water_cap_overrides:
+            if ov.site_id == site_id:
+                boundaries.extend([ov.start, ov.end])
 
     points = _event_points(placement_start, placement_finish, boundaries)
     diagnostics: list[Diagnostic] = []
@@ -432,20 +524,23 @@ def evaluate_capacity_against_reservations(
             )
             return None, diagnostics
 
-        if row.water_cap_liters_per_hour is not None:
+        cap = effective_water_cap(
+            row.water_cap_liters_per_hour, site_id, left, right, water_cap_overrides
+        )
+        if cap is not None:
             cand_rate = job_gpus * row.incremental_water_liters_per_gpu_hour
             total_rate = (
                 row.fixed_water_liters_per_hour
                 + mid_load_reserved.incremental_water_rate_lph
                 + cand_rate
             )
-            if total_rate > row.water_cap_liters_per_hour + _EPS:
+            if total_rate > cap + _EPS:
                 diagnostics.append(
                     Diagnostic(
                         code=DiagnosticCode.water_cap_restriction,
                         message=(
                             f"Water withdrawal rate {total_rate:.4f} L/h exceeds cap "
-                            f"{row.water_cap_liters_per_hour} L/h on {site_id} during "
+                            f"{cap} L/h on {site_id} during "
                             f"[{left.isoformat()}, {right.isoformat()})"
                         ),
                         job_id=job_id,
@@ -467,6 +562,7 @@ def validate_running_load_alone(
     window_start: datetime,
     window_finish: datetime,
     job_id: str,
+    water_cap_overrides: Optional[list[WaterCapOverride]] = None,
 ) -> list[Diagnostic]:
     """Detect fixed+running overcapacity without a candidate."""
     if window_finish <= window_start:
@@ -477,6 +573,10 @@ def validate_running_load_alone(
     for c in reserved_contributions:
         if c.site_id == site_id:
             boundaries.extend([c.interval_start, c.interval_end])
+    if water_cap_overrides:
+        for ov in water_cap_overrides:
+            if ov.site_id == site_id:
+                boundaries.extend([ov.start, ov.end])
     points = _event_points(window_start, window_finish, boundaries)
     diagnostics: list[Diagnostic] = []
     seen_gpu: set[tuple[datetime, datetime]] = set()
@@ -505,19 +605,19 @@ def validate_running_load_alone(
                     period_end=right,
                 )
             )
-        if row.water_cap_liters_per_hour is not None:
+        cap = effective_water_cap(
+            row.water_cap_liters_per_hour, site_id, left, right, water_cap_overrides
+        )
+        if cap is not None:
             total_rate = row.fixed_water_liters_per_hour + load.incremental_water_rate_lph
-            if total_rate > row.water_cap_liters_per_hour + _EPS and (
-                left,
-                right,
-            ) not in seen_water:
+            if total_rate > cap + _EPS and (left, right) not in seen_water:
                 seen_water.add((left, right))
                 diagnostics.append(
                     Diagnostic(
                         code=DiagnosticCode.running_water_cap_exceeded,
                         message=(
                             f"Fixed plus running water rate {total_rate:.4f} L/h exceeds "
-                            f"cap {row.water_cap_liters_per_hour} L/h on {site_id}"
+                            f"cap {cap} L/h on {site_id}"
                         ),
                         job_id=job_id,
                         site_id=site_id,
@@ -537,6 +637,8 @@ def reserve_running_jobs(
     jobs: list[Job],
     site_index: dict[str, _SiteIndex],
     current_time: datetime,
+    *,
+    water_cap_overrides: Optional[list[WaterCapOverride]] = None,
 ) -> tuple[list[RunningReservation], list[Diagnostic]]:
     current_time = require_aware_utc(current_time, "current_time")
     reservations: list[RunningReservation] = []
@@ -665,6 +767,7 @@ def reserve_running_jobs(
                 window_start=reserved_from,
                 window_finish=finish,
                 job_id=job.id,
+                water_cap_overrides=water_cap_overrides,
             )
         )
         _ = deadline  # deadline is not enforced for already-running fixed work
@@ -687,6 +790,7 @@ def reserve_running_jobs(
                 window_start=window_start,
                 window_finish=window_finish,
                 job_id="*",
+                water_cap_overrides=water_cap_overrides,
             )
         )
 
@@ -745,6 +849,7 @@ def generate_placement_candidates(
     current_time: datetime,
     *,
     reconsider_job_ids: Optional[list[str]] = None,
+    water_cap_overrides: Optional[list[WaterCapOverride]] = None,
 ) -> CandidateGenerationResult:
     """Enumerate eligible site/start placements without mutating inputs.
 
@@ -774,7 +879,12 @@ def generate_placement_candidates(
                 )
             )
 
-    reservations, running_diags = reserve_running_jobs(jobs, site_index, current_time)
+    reservations, running_diags = reserve_running_jobs(
+        jobs,
+        site_index,
+        current_time,
+        water_cap_overrides=water_cap_overrides,
+    )
     diagnostics.extend(running_diags)
     reserved_by_site: dict[str, list[IntervalContribution]] = {}
     for r in reservations:
@@ -901,6 +1011,7 @@ def generate_placement_candidates(
                     placement_finish=finish,
                     reserved_contributions=reserved_by_site.get(site_id, []),
                     job_id=job.id,
+                    water_cap_overrides=water_cap_overrides,
                 )
                 if contribs is None:
                     for d in caps_diags:
@@ -958,6 +1069,8 @@ def _atomic_slices(
     candidates: list[PlacementCandidate],
     reservations: list[RunningReservation],
     site_index: dict[str, _SiteIndex],
+    water_cap_overrides: Optional[list[WaterCapOverride]] = None,
+    extra_bounds: Optional[list[datetime]] = None,
 ) -> list[tuple[datetime, datetime]]:
     index = site_index[site_id]
     points: set[datetime] = set()
@@ -980,6 +1093,13 @@ def _atomic_slices(
         for part in r.contributions:
             points.add(part.interval_start)
             points.add(part.interval_end)
+    if water_cap_overrides:
+        for ov in water_cap_overrides:
+            if ov.site_id == site_id:
+                points.add(ov.start)
+                points.add(ov.end)
+    if extra_bounds:
+        points.update(extra_bounds)
     ordered = sorted(points)
     return [(a, b) for a, b in zip(ordered, ordered[1:]) if b > a]
 
@@ -1007,6 +1127,8 @@ def validate_selection(
     selected: dict[str, PlacementCandidate],
     running_reservations: list[RunningReservation],
     sites: list[SiteProfile],
+    *,
+    water_cap_overrides: Optional[list[WaterCapOverride]] = None,
 ) -> list[Diagnostic]:
     """Re-check GPU and water rates for a concrete selection."""
     site_index = index_site_profiles(sites)
@@ -1015,8 +1137,12 @@ def validate_selection(
     for cand in selected.values():
         by_site_candidates.setdefault(cand.site_id, []).append(cand)
 
-    for site_id, cands in by_site_candidates.items():
+    sites_to_check = set(by_site_candidates) | {
+        r.site_id for r in running_reservations
+    }
+    for site_id in sites_to_check:
         index = site_index.get(site_id)
+        cands = by_site_candidates.get(site_id, [])
         if index is None:
             diagnostics.append(
                 Diagnostic(
@@ -1027,7 +1153,11 @@ def validate_selection(
             )
             continue
         for left, right in _atomic_slices(
-            site_id, cands, running_reservations, site_index
+            site_id,
+            cands,
+            running_reservations,
+            site_index,
+            water_cap_overrides=water_cap_overrides,
         ):
             hour = left.replace(minute=0, second=0, microsecond=0)
             row = index.by_hour.get(hour)
@@ -1053,15 +1183,18 @@ def validate_selection(
                         period_end=right,
                     )
                 )
-            if row.water_cap_liters_per_hour is not None:
+            cap = effective_water_cap(
+                row.water_cap_liters_per_hour, site_id, left, right, water_cap_overrides
+            )
+            if cap is not None:
                 total = row.fixed_water_liters_per_hour + rate
-                if total > row.water_cap_liters_per_hour + _EPS:
+                if total > cap + _EPS:
                     diagnostics.append(
                         Diagnostic(
                             code=DiagnosticCode.water_cap_restriction,
                             message=(
                                 f"Selection water rate {total:.4f} L/h exceeds cap "
-                                f"{row.water_cap_liters_per_hour} on {site_id}"
+                                f"{cap} on {site_id}"
                             ),
                             site_id=site_id,
                             period_start=left,
@@ -1078,18 +1211,67 @@ def check_simultaneous_feasibility(
     *,
     job_ids: Optional[list[str]] = None,
     time_limit_sec: float = 10.0,
+    water_cap_overrides: Optional[list[WaterCapOverride]] = None,
 ) -> FeasibilityResult:
     """Zero-cost MILP: pick exactly one candidate per job if jointly feasible.
 
     Scheduled jobs present in ``candidates_by_job`` are treated as reconsidered —
-    their prior placement is not reserved. Running reservations stay fixed.
+    their prior placement is not reserved. Running jobs remain fixed.
 
     Returns a feasible selection, proven infeasibility, or solver timeout/error.
+    """
+    result = optimize_placements(
+        candidates_by_job,
+        running_reservations,
+        sites,
+        jobs_by_id={},
+        objective=OptimizeObjective.min_cost,
+        job_ids=job_ids,
+        allow_unfulfilled=set(),
+        cost_ceiling=None,
+        water_cap_overrides=water_cap_overrides,
+        prefer_placements=None,
+        time_limit_sec=time_limit_sec,
+        secondary_change_weight=0.0,
+        secondary_cost_weight=0.0,
+    )
+    return FeasibilityResult(
+        status=result.status,
+        selected=result.selected,
+        reason=result.reason,
+        validated=result.validated,
+    )
+
+
+def optimize_placements(
+    candidates_by_job: dict[str, list[PlacementCandidate]],
+    running_reservations: list[RunningReservation],
+    sites: list[SiteProfile],
+    jobs_by_id: dict[str, Job],
+    *,
+    objective: OptimizeObjective,
+    job_ids: Optional[list[str]] = None,
+    allow_unfulfilled: Optional[set[str]] = None,
+    cost_ceiling: Optional[float] = None,
+    water_cap_overrides: Optional[list[WaterCapOverride]] = None,
+    prefer_placements: Optional[dict[str, tuple[str, datetime]]] = None,
+    time_limit_sec: float = 10.0,
+    secondary_change_weight: float = 1e-6,
+    secondary_cost_weight: float = 1e-4,
+) -> OptimizeResult:
+    """MILP assignment over candidates with cost or water objectives.
+
+    Jobs in ``allow_unfulfilled`` may be left unfulfilled (binary) and pay
+    ``miss_penalty_usd``. All other requested jobs must receive exactly one
+    candidate. Running reservations stay fixed and are never double-counted.
     """
     import numpy as np
     from scipy.optimize import Bounds, LinearConstraint, milp
 
+    allow_unfulfilled = set(allow_unfulfilled or ())
+    prefer_placements = prefer_placements or {}
     site_index = index_site_profiles(sites)
+
     if job_ids is None:
         target_jobs = sorted(candidates_by_job)
     else:
@@ -1098,9 +1280,9 @@ def check_simultaneous_feasibility(
     flat: list[PlacementCandidate] = []
     job_of_var: list[str] = []
     for job_id in target_jobs:
-        opts = candidates_by_job.get(job_id, [])
-        if not opts:
-            return FeasibilityResult(
+        opts = list(candidates_by_job.get(job_id, []))
+        if not opts and job_id not in allow_unfulfilled:
+            return OptimizeResult(
                 status=FeasibilityStatus.infeasible,
                 reason=f"Job {job_id} has no candidates",
             )
@@ -1108,88 +1290,147 @@ def check_simultaneous_feasibility(
             flat.append(cand)
             job_of_var.append(job_id)
 
-    n = len(flat)
-    if n == 0:
-        return FeasibilityResult(
-            status=FeasibilityStatus.feasible,
-            selected={},
-            validated=True,
-        )
+    n_cand = len(flat)
+    optional_jobs = [j for j in target_jobs if j in allow_unfulfilled]
+    n_unf = len(optional_jobs)
+    n = n_cand + n_unf
+    unf_index = {job_id: n_cand + i for i, job_id in enumerate(optional_jobs)}
 
-    # Equality: exactly one candidate per job.
-    unique_jobs = list(dict.fromkeys(job_of_var))
+    if n == 0:
+        return OptimizeResult(status=FeasibilityStatus.feasible, validated=True)
+
+    # Assignment equalities / covering constraints.
     a_eq_rows: list[list[float]] = []
     b_eq: list[float] = []
-    for job_id in unique_jobs:
-        row = [1.0 if job_of_var[i] == job_id else 0.0 for i in range(n)]
+    for job_id in target_jobs:
+        row = [0.0] * n
+        for i in range(n_cand):
+            if job_of_var[i] == job_id:
+                row[i] = 1.0
+        if job_id in unf_index:
+            row[unf_index[job_id]] = 1.0
         a_eq_rows.append(row)
         b_eq.append(1.0)
 
-    # Inequality: GPU and water on atomic slices per site.
     a_ub_rows: list[list[float]] = []
     b_ub: list[float] = []
+
+    # Cost ceiling uses electricity + miss penalties (same accounting as evaluation).
+    # Running-job electricity is sunk/constant and subtracted from the RHS so the
+    # ceiling compares against full schedule cost = running + selected + penalties.
+    if cost_ceiling is not None:
+        running_elec = sum(
+            float(r.estimated_electricity_cost_usd) for r in running_reservations
+        )
+        cost_row = [0.0] * n
+        for i, cand in enumerate(flat):
+            cost_row[i] = float(cand.estimated_electricity_cost_usd)
+        for job_id, idx in unf_index.items():
+            job = jobs_by_id.get(job_id)
+            cost_row[idx] = float(job.miss_penalty_usd) if job else 0.0
+        a_ub_rows.append(cost_row)
+        b_ub.append(float(cost_ceiling) - running_elec)
+
     sites_touched = {c.site_id for c in flat} | {r.site_id for r in running_reservations}
     for site_id in sorted(sites_touched):
         if site_id not in site_index:
-            return FeasibilityResult(
+            return OptimizeResult(
                 status=FeasibilityStatus.infeasible,
                 reason=f"Missing site profile {site_id}",
             )
         index = site_index[site_id]
-        for left, right in _atomic_slices(site_id, flat, running_reservations, site_index):
+        for left, right in _atomic_slices(
+            site_id,
+            flat,
+            running_reservations,
+            site_index,
+            water_cap_overrides=water_cap_overrides,
+        ):
             hour = left.replace(minute=0, second=0, microsecond=0)
             row_prof = index.by_hour.get(hour)
             if row_prof is None:
                 continue
             reserved = _reserved_load_on_slice(running_reservations, site_id, left, right)
 
-            gpu_coeffs = [
-                float(flat[i].gpu_count)
-                if flat[i].site_id == site_id and _candidate_active(flat[i], left, right)
-                else 0.0
-                for i in range(n)
-            ]
+            gpu_coeffs = [0.0] * n
+            for i in range(n_cand):
+                if flat[i].site_id == site_id and _candidate_active(flat[i], left, right):
+                    gpu_coeffs[i] = float(flat[i].gpu_count)
             gpu_rhs = row_prof.gpu_capacity - reserved.gpu_count
             if any(gpu_coeffs):
                 a_ub_rows.append(gpu_coeffs)
                 b_ub.append(float(gpu_rhs))
 
-            if row_prof.water_cap_liters_per_hour is not None:
-                water_coeffs = []
-                for i in range(n):
+            cap = effective_water_cap(
+                row_prof.water_cap_liters_per_hour,
+                site_id,
+                left,
+                right,
+                water_cap_overrides,
+            )
+            if cap is not None:
+                water_coeffs = [0.0] * n
+                for i in range(n_cand):
                     if flat[i].site_id == site_id and _candidate_active(
                         flat[i], left, right
                     ):
-                        water_coeffs.append(
-                            float(
-                                flat[i].gpu_count
-                                * row_prof.incremental_water_liters_per_gpu_hour
-                            )
+                        water_coeffs[i] = float(
+                            flat[i].gpu_count
+                            * row_prof.incremental_water_liters_per_gpu_hour
                         )
-                    else:
-                        water_coeffs.append(0.0)
                 water_rhs = (
-                    row_prof.water_cap_liters_per_hour
+                    cap
                     - row_prof.fixed_water_liters_per_hour
                     - reserved.incremental_water_rate_lph
                 )
-                if any(water_coeffs):
+                if any(water_coeffs) or water_rhs < -_EPS:
                     a_ub_rows.append(water_coeffs)
                     b_ub.append(float(water_rhs))
 
+    # Objective coefficients.
+    c = np.zeros(n)
+    if objective == OptimizeObjective.min_cost:
+        for i, cand in enumerate(flat):
+            c[i] = float(cand.estimated_electricity_cost_usd)
+            pref = prefer_placements.get(cand.job_id)
+            if pref is not None and (cand.site_id, cand.start) != pref:
+                c[i] += secondary_change_weight
+        for job_id, idx in unf_index.items():
+            job = jobs_by_id.get(job_id)
+            c[idx] = float(job.miss_penalty_usd) if job else 0.0
+    else:
+        # Minimize incremental job water; fixed/running water is constant.
+        for i, cand in enumerate(flat):
+            c[i] = float(cand.estimated_incremental_water_liters)
+            c[i] += secondary_cost_weight * float(cand.estimated_electricity_cost_usd)
+            pref = prefer_placements.get(cand.job_id)
+            if pref is not None and (cand.site_id, cand.start) != pref:
+                c[i] += secondary_change_weight
+        for job_id, idx in unf_index.items():
+            # Unfulfilled adds no incremental water; discourage via large penalty
+            # unless the job is allowed — use miss penalty scaled into water units.
+            job = jobs_by_id.get(job_id)
+            # In routine mode allow_unfulfilled is empty; this branch is for safety.
+            c[idx] = 1e6 + (float(job.miss_penalty_usd) if job else 0.0)
+
     constraints = []
     if a_eq_rows:
-        a_eq = np.asarray(a_eq_rows, dtype=float)
-        b_eq_arr = np.asarray(b_eq, dtype=float)
-        constraints.append(LinearConstraint(a_eq, b_eq_arr, b_eq_arr))
+        constraints.append(
+            LinearConstraint(
+                np.asarray(a_eq_rows, dtype=float),
+                np.asarray(b_eq, dtype=float),
+                np.asarray(b_eq, dtype=float),
+            )
+        )
     if a_ub_rows:
-        a_ub = np.asarray(a_ub_rows, dtype=float)
-        # lb = -inf, ub = b_ub  →  A x <= b
-        lb = np.full(len(b_ub), -np.inf)
-        ub = np.asarray(b_ub, dtype=float)
-        constraints.append(LinearConstraint(a_ub, lb, ub))
+        constraints.append(
+            LinearConstraint(
+                np.asarray(a_ub_rows, dtype=float),
+                np.full(len(b_ub), -np.inf),
+                np.asarray(b_ub, dtype=float),
+            )
+        )
 
-    c = np.zeros(n)
     integrality = np.ones(n, dtype=int)
     bounds = Bounds(lb=np.zeros(n), ub=np.ones(n))
 
@@ -1201,62 +1442,368 @@ def check_simultaneous_feasibility(
             constraints=constraints,
             options={"time_limit": time_limit_sec},
         )
-    except Exception as exc:  # noqa: BLE001 — surface solver failures distinctly
-        return FeasibilityResult(
+    except Exception as exc:  # noqa: BLE001
+        return OptimizeResult(
             status=FeasibilityStatus.solver_error,
             reason=f"SciPy milp raised: {exc}",
         )
 
-    if result.status == 1:
-        # timelimit (HiGHS status); scipy uses status codes
-        pass
-
-    # SciPy milp: 0 success; 1 iteration/time limit; others failure.
     status_code = int(result.status)
+    message = getattr(result, "message", "") or ""
+
     if status_code == 0 and result.x is not None:
         selected: dict[str, PlacementCandidate] = {}
-        for i, val in enumerate(result.x):
+        unfulfilled: list[str] = []
+        for i, val in enumerate(result.x[:n_cand]):
             if val >= 0.5:
                 selected[job_of_var[i]] = flat[i]
-        if set(selected) != set(unique_jobs):
-            return FeasibilityResult(
+        for job_id, idx in unf_index.items():
+            if result.x[idx] >= 0.5:
+                unfulfilled.append(job_id)
+
+        covered = set(selected) | set(unfulfilled)
+        if covered != set(target_jobs):
+            return OptimizeResult(
                 status=FeasibilityStatus.solver_error,
                 reason="Solver returned an incomplete selection",
             )
-        violations = validate_selection(selected, running_reservations, sites)
+
+        violations = validate_selection(
+            selected,
+            running_reservations,
+            sites,
+            water_cap_overrides=water_cap_overrides,
+        )
         if violations:
-            return FeasibilityResult(
+            return OptimizeResult(
                 status=FeasibilityStatus.solver_error,
-                reason=(
-                    "Solver selection failed post-validation: "
-                    + violations[0].message
-                ),
+                reason="Solver selection failed post-validation: " + violations[0].message,
                 selected=selected,
+                unfulfilled_job_ids=tuple(sorted(unfulfilled)),
                 validated=False,
             )
-        return FeasibilityResult(
+        obj = float(np.dot(c, result.x))
+        return OptimizeResult(
             status=FeasibilityStatus.feasible,
             selected=selected,
+            unfulfilled_job_ids=tuple(sorted(unfulfilled)),
+            objective_value=obj,
             validated=True,
         )
 
-    message = getattr(result, "message", "") or ""
     if status_code == 1 or "time" in message.lower():
-        return FeasibilityResult(
+        return OptimizeResult(
             status=FeasibilityStatus.solver_timeout,
             reason=message or "MILP time limit reached",
         )
 
-    # Proven infeasible or other failure — distinguish when message indicates infeasibility.
     lower = message.lower()
     if status_code in {2, 3, 4} or "infeas" in lower:
-        return FeasibilityResult(
+        return OptimizeResult(
             status=FeasibilityStatus.infeasible,
             reason=message or "No feasible joint assignment of candidates",
         )
-    return FeasibilityResult(
+    return OptimizeResult(
         status=FeasibilityStatus.solver_error,
         reason=message or f"MILP failed with status={status_code}",
+    )
+
+
+def default_evaluation_horizon(
+    sites: list[SiteProfile],
+    current_time: datetime,
+    selected: dict[str, PlacementCandidate],
+    running_reservations: list[RunningReservation],
+    extra_ends: Optional[list[datetime]] = None,
+) -> tuple[datetime, datetime]:
+    """Shared explicit horizon for reference and proposed schedule metrics."""
+    current_time = require_aware_utc(current_time, "current_time")
+    ends: list[datetime] = [current_time + ONE_HOUR]
+    site_index = index_site_profiles(sites)
+    for index in site_index.values():
+        if index.sorted_hours:
+            ends.append(index.sorted_hours[-1] + ONE_HOUR)
+    for cand in selected.values():
+        ends.append(cand.finish)
+    for r in running_reservations:
+        ends.append(r.finish)
+    if extra_ends:
+        ends.extend(extra_ends)
+    return current_time, max(ends)
+
+
+def evaluate_schedule(
+    jobs: list[Job],
+    sites: list[SiteProfile],
+    current_time: datetime,
+    *,
+    selected: dict[str, PlacementCandidate],
+    running_reservations: list[RunningReservation],
+    unfulfilled_job_ids: Optional[set[str]] = None,
+    unfulfilled_reasons: Optional[dict[str, str]] = None,
+    horizon_start: Optional[datetime] = None,
+    horizon_end: Optional[datetime] = None,
+    water_cap_overrides: Optional[list[WaterCapOverride]] = None,
+) -> ScheduleEvaluation:
+    """Evaluate one complete schedule for metrics, deadlines, and cap compliance.
+
+    Cost accounting: electricity from profile fields + miss_penalty_usd for
+    explicitly unfulfilled jobs. water_usd is always 0 (no tariff in schema).
+    Fixed facility withdrawal is counted once per site-hour in the horizon.
+    """
+    current_time = require_aware_utc(current_time, "current_time")
+    unfulfilled_job_ids = set(unfulfilled_job_ids or ())
+    unfulfilled_reasons = dict(unfulfilled_reasons or {})
+    site_index = index_site_profiles(sites)
+
+    if horizon_start is None or horizon_end is None:
+        horizon_start, horizon_end = default_evaluation_horizon(
+            sites, current_time, selected, running_reservations
+        )
+    else:
+        horizon_start = require_aware_utc(horizon_start, "horizon_start")
+        horizon_end = require_aware_utc(horizon_end, "horizon_end")
+
+    jobs_by_id = {j.id: j for j in jobs}
+    active_job_ids = {
+        j.id
+        for j in jobs
+        if j.status
+        in {JobStatus.queued, JobStatus.scheduled, JobStatus.running}
+    }
+
+    # Incremental contributions from running + selected placements.
+    all_contribs: list[IntervalContribution] = []
+    for r in running_reservations:
+        all_contribs.extend(r.contributions)
+    for cand in selected.values():
+        all_contribs.extend(cand.contributions)
+
+    energy_kwh = 0.0
+    energy_cost = 0.0
+    incremental_water = 0.0
+    for c in all_contribs:
+        ov = _overlap(c.interval_start, c.interval_end, horizon_start, horizon_end)
+        if ov is None:
+            continue
+        frac = hours_between(ov[0], ov[1]) / max(hours_between(c.interval_start, c.interval_end), _EPS)
+        # Contributions already store integrated values for their intervals; scale if clipped.
+        full_h = hours_between(c.interval_start, c.interval_end)
+        scale = hours_between(ov[0], ov[1]) / full_h if full_h > 0 else 0.0
+        energy_kwh += c.energy_kwh * scale
+        energy_cost += c.electricity_cost_usd * scale
+        incremental_water += c.incremental_water_liters * scale
+        _ = frac
+
+    # Fixed facility water once per site per overlapping hour in the horizon.
+    fixed_water = 0.0
+    per_site_fixed: dict[str, float] = {sid: 0.0 for sid in site_index}
+    per_site_incr: dict[str, float] = {sid: 0.0 for sid in site_index}
+    per_site_energy: dict[str, float] = {sid: 0.0 for sid in site_index}
+    per_site_energy_cost: dict[str, float] = {sid: 0.0 for sid in site_index}
+    per_site_violations: dict[str, int] = {sid: 0 for sid in site_index}
+    per_site_peak: dict[str, float] = {sid: 0.0 for sid in site_index}
+    per_site_peak_at: dict[str, Optional[datetime]] = {sid: None for sid in site_index}
+    per_site_peak_cap: dict[str, Optional[float]] = {sid: None for sid in site_index}
+
+    for c in all_contribs:
+        ov = _overlap(c.interval_start, c.interval_end, horizon_start, horizon_end)
+        if ov is None:
+            continue
+        full_h = hours_between(c.interval_start, c.interval_end)
+        scale = hours_between(ov[0], ov[1]) / full_h if full_h > 0 else 0.0
+        per_site_incr[c.site_id] = per_site_incr.get(c.site_id, 0.0) + c.incremental_water_liters * scale
+        per_site_energy[c.site_id] = per_site_energy.get(c.site_id, 0.0) + c.energy_kwh * scale
+        per_site_energy_cost[c.site_id] = (
+            per_site_energy_cost.get(c.site_id, 0.0) + c.electricity_cost_usd * scale
+        )
+
+    diagnostics: list[Diagnostic] = []
+    for site_id, index in site_index.items():
+        for hour in index.sorted_hours:
+            hour_end = hour + ONE_HOUR
+            ov = _overlap(hour, hour_end, horizon_start, horizon_end)
+            if ov is None:
+                continue
+            row = index.by_hour[hour]
+            dur = hours_between(ov[0], ov[1])
+            fixed_part = row.fixed_water_liters_per_hour * dur
+            fixed_water += fixed_part
+            per_site_fixed[site_id] = per_site_fixed.get(site_id, 0.0) + fixed_part
+
+        # Peak withdrawal and cap violations on atomic slices in horizon.
+        site_cands = [c for c in selected.values() if c.site_id == site_id]
+        for left, right in _atomic_slices(
+            site_id,
+            site_cands,
+            running_reservations,
+            site_index,
+            water_cap_overrides=water_cap_overrides,
+            extra_bounds=[horizon_start, horizon_end],
+        ):
+            if right <= horizon_start or left >= horizon_end:
+                continue
+            slice_left = max(left, horizon_start)
+            slice_right = min(right, horizon_end)
+            if slice_right <= slice_left:
+                continue
+            hour = slice_left.replace(minute=0, second=0, microsecond=0)
+            row = index.by_hour.get(hour)
+            if row is None:
+                diagnostics.append(
+                    Diagnostic(
+                        code=DiagnosticCode.missing_telemetry,
+                        message=f"Missing telemetry at {hour.isoformat()} during evaluation",
+                        site_id=site_id,
+                        period_start=hour,
+                        period_end=hour + ONE_HOUR,
+                    )
+                )
+                continue
+            reserved = _reserved_load_on_slice(
+                running_reservations, site_id, slice_left, slice_right
+            )
+            rate = reserved.incremental_water_rate_lph
+            for cand in site_cands:
+                if _candidate_active(cand, slice_left, slice_right):
+                    rate += cand.gpu_count * row.incremental_water_liters_per_gpu_hour
+            total_rate = row.fixed_water_liters_per_hour + rate
+            if total_rate > per_site_peak.get(site_id, 0.0):
+                per_site_peak[site_id] = total_rate
+                per_site_peak_at[site_id] = slice_left
+            cap = effective_water_cap(
+                row.water_cap_liters_per_hour,
+                site_id,
+                slice_left,
+                slice_right,
+                water_cap_overrides,
+            )
+            per_site_peak_cap[site_id] = cap
+            if cap is not None and total_rate > cap + _EPS:
+                per_site_violations[site_id] = per_site_violations.get(site_id, 0) + 1
+
+    miss_penalties = 0.0
+    outcomes: list[JobDeadlineResult] = []
+    on_time = late = unfulfilled_count = 0
+
+    for job in jobs:
+        if job.id not in active_job_ids:
+            continue
+        if job.status == JobStatus.running:
+            res = next((r for r in running_reservations if r.job_id == job.id), None)
+            if res is None:
+                outcomes.append(
+                    JobDeadlineResult(
+                        job_id=job.id,
+                        met_deadline=False,
+                        projected_completion=None,
+                        unfulfilled=False,
+                        unfulfilled_reason="running_reservation_unavailable",
+                    )
+                )
+                late += 1
+                continue
+            met = res.finish <= require_aware_utc(job.deadline, "deadline")
+            outcomes.append(
+                JobDeadlineResult(
+                    job_id=job.id,
+                    met_deadline=met,
+                    projected_completion=res.finish,
+                    unfulfilled=False,
+                    unfulfilled_reason=None,
+                )
+            )
+            if met:
+                on_time += 1
+            else:
+                late += 1
+            continue
+
+        if job.id in unfulfilled_job_ids:
+            reason = unfulfilled_reasons.get(job.id, "left_unfulfilled_by_optimizer")
+            miss_penalties += job.miss_penalty_usd
+            outcomes.append(
+                JobDeadlineResult(
+                    job_id=job.id,
+                    met_deadline=False,
+                    projected_completion=None,
+                    unfulfilled=True,
+                    unfulfilled_reason=reason,
+                )
+            )
+            unfulfilled_count += 1
+            continue
+
+        cand = selected.get(job.id)
+        if cand is None:
+            # Expected to be placed but missing — treat as unfulfilled for honesty.
+            outcomes.append(
+                JobDeadlineResult(
+                    job_id=job.id,
+                    met_deadline=False,
+                    projected_completion=None,
+                    unfulfilled=True,
+                    unfulfilled_reason="no_assignment_in_schedule",
+                )
+            )
+            unfulfilled_count += 1
+            miss_penalties += job.miss_penalty_usd
+            continue
+
+        deadline = require_aware_utc(job.deadline, "deadline")
+        met = cand.finish <= deadline
+        outcomes.append(
+            JobDeadlineResult(
+                job_id=job.id,
+                met_deadline=met,
+                projected_completion=cand.finish,
+                unfulfilled=False,
+                unfulfilled_reason=None,
+            )
+        )
+        if met:
+            on_time += 1
+        else:
+            late += 1
+
+    total_water = fixed_water + incremental_water
+    water_cost = 0.0  # no water tariff in current schema
+    total_cost = energy_cost + water_cost + miss_penalties
+
+    site_evals = []
+    for site_id in sorted(site_index):
+        water = per_site_fixed.get(site_id, 0.0) + per_site_incr.get(site_id, 0.0)
+        viol = per_site_violations.get(site_id, 0)
+        site_evals.append(
+            SiteEvaluation(
+                site_id=site_id,
+                water_liters=water,
+                water_cap_violations=viol,
+                energy_kwh=per_site_energy.get(site_id, 0.0),
+                energy_cost_usd=per_site_energy_cost.get(site_id, 0.0),
+                peak_withdrawal_lph=per_site_peak.get(site_id, 0.0),
+                peak_withdrawal_at=per_site_peak_at.get(site_id),
+                within_cap=viol == 0,
+                active_cap_at_peak=per_site_peak_cap.get(site_id),
+            )
+        )
+
+    outcomes.sort(key=lambda o: o.job_id)
+    return ScheduleEvaluation(
+        horizon_start=horizon_start,
+        horizon_end=horizon_end,
+        total_water_liters=total_water,
+        total_energy_kwh=energy_kwh,
+        energy_cost_usd=energy_cost,
+        water_cost_usd=water_cost,
+        miss_penalties_usd=miss_penalties,
+        total_cost_usd=total_cost,
+        jobs_on_time=on_time,
+        jobs_late=late,
+        jobs_unfulfilled=unfulfilled_count,
+        per_site=tuple(site_evals),
+        deadline_outcomes=tuple(outcomes),
+        diagnostics=tuple(diagnostics),
     )
 
 

@@ -14,9 +14,11 @@ This repository is the **HackUTA scaffold**: a runnable local demo using fixture
 
 ## Not implemented yet
 
-- `POST /api/reallocation/preview`, `/api/reallocation/apply` (returns **501**)
+- `POST /api/reallocation/apply` (returns **501** — Person 1; previews are cached for handoff)
 - `POST /api/demo/advance` (returns **501**)
-- MongoDB, Tiger Data, Gemini, MILP scheduler, simulated job worker ticks
+- MongoDB, Tiger Data, Gemini NL parsing, simulated job worker ticks
+
+`POST /api/reallocation/preview` is implemented (routine + emergency MILP) when site telemetry covers the workload. Use `SITE_PROFILES_FIXTURE=sites_extended_synthetic.json` for the runnable demo.
 
 See `docs/team-workflow.md` for ownership split.
 
@@ -35,6 +37,8 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
+# For runnable reallocation demos (6h/12h jobs), ensure:
+# SITE_PROFILES_FIXTURE=sites_extended_synthetic.json
 ```
 
 ### macOS / Linux
@@ -45,6 +49,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
+# For runnable reallocation demos (6h/12h jobs), ensure:
+# SITE_PROFILES_FIXTURE=sites_extended_synthetic.json
 ```
 
 ## Run
@@ -52,6 +58,8 @@ cp .env.example .env
 ```bash
 python -m uvicorn app.main:app --reload
 ```
+
+Preview demo (with extended synthetic sites selected in `.env`): open `/docs`, call `GET /api/sites`, then `POST /api/reallocation/preview` with the routine/emergency bodies in `docs/api-contract.md`. Preview does not change saved job assignments, the demo clock, or revision.
 
 | URL | Purpose |
 |-----|---------|

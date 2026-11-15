@@ -14,6 +14,15 @@ DEMO_CLOCK_ANCHOR_ISO = "2026-03-15T18:00:00+00:00"
 
 SUPPORTED_DATA_MODES = frozenset({"fixtures"})
 
+# Synthetic site telemetry fixtures under fixtures/.
+# - sites.json: short 3-hour horizon (missing-coverage tests)
+# - sites_extended_synthetic.json: 18-hour synthetic horizon for runnable preview demos
+SITE_PROFILES_SHORT = "sites.json"
+SITE_PROFILES_EXTENDED_SYNTHETIC = "sites_extended_synthetic.json"
+SUPPORTED_SITE_PROFILE_FIXTURES = frozenset(
+    {SITE_PROFILES_SHORT, SITE_PROFILES_EXTENDED_SYNTHETIC}
+)
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -24,6 +33,8 @@ class Settings(BaseSettings):
 
     data_mode: str = "fixtures"
     demo_session_id: str = "demo-session-hackuta-2026"
+    # Filename under fixtures/ — both files are explicitly synthetic demo data.
+    site_profiles_fixture: str = SITE_PROFILES_SHORT
     mongodb_uri: str = ""
     mongodb_database: str = "aquilibri"
     tigerdata_database_url: str = ""
@@ -38,9 +49,30 @@ class Settings(BaseSettings):
                 "Cloud integrations are not enabled in this scaffold build."
             )
 
+    def require_supported_site_profiles_fixture(self) -> None:
+        name = self.site_profiles_fixture
+        if name not in SUPPORTED_SITE_PROFILE_FIXTURES:
+            raise RuntimeError(
+                f"Unsupported SITE_PROFILES_FIXTURE={name!r}. "
+                f"Supported: {sorted(SUPPORTED_SITE_PROFILE_FIXTURES)}."
+            )
+        path = FIXTURES_DIR / name
+        if not path.is_file():
+            raise RuntimeError(f"Site profiles fixture not found: {path}")
+
+    def site_profiles_path(self) -> Path:
+        self.require_supported_site_profiles_fixture()
+        return FIXTURES_DIR / self.site_profiles_fixture
+
 
 @lru_cache
 def get_settings() -> Settings:
     settings = Settings()
     settings.require_supported_data_mode()
+    settings.require_supported_site_profiles_fixture()
     return settings
+
+
+def clear_settings_cache() -> None:
+    """Test helper — clear cached settings after env changes."""
+    get_settings.cache_clear()

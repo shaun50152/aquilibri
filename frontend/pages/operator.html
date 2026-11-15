@@ -49,10 +49,63 @@
       </table>
     </section>
 
-    <section class="card coming-soon">
-      <h2>Reallocation (coming next)</h2>
-      <p>Routine and emergency scheduling preview/apply will call <code>/api/reallocation/*</code> once the MILP + Gemini integration lands.</p>
-      <p class="muted">Sample preview JSON lives in <code>fixtures/preview_*.json</code> for UI prototyping.</p>
+    <section class="card" id="reallocation-panel">
+      <h2>Reallocation preview</h2>
+      <p class="muted">
+        Load a sample fixture response or run a live preview. Displays
+        <code>proposed_job_changes</code>, <code>metrics_before</code>,
+        <code>metrics_after</code>, and <code>cost_breakdown</code>.
+      </p>
+      <div class="toolbar">
+        <label for="sample-select" class="inline-label">Sample</label>
+        <select id="sample-select" aria-label="Sample preview">
+          <option value="preview_move">preview_move</option>
+          <option value="preview_unfulfilled">preview_unfulfilled</option>
+          <option value="preview_infeasible">preview_infeasible</option>
+        </select>
+        <button type="button" class="secondary" id="load-sample-btn">Load sample JSON</button>
+        <button type="button" id="run-routine-btn">Run routine preview</button>
+        <button type="button" class="secondary" id="run-emergency-btn">Run emergency preview</button>
+      </div>
+      <div id="preview-error" class="error" hidden></div>
+      <div id="preview-empty" class="empty">No preview loaded yet.</div>
+      <div id="preview-body" hidden>
+        <div class="toolbar" style="margin-top:0">
+          <span class="badge" id="preview-status">—</span>
+          <span class="muted">preview <span id="preview-id">—</span> · revision <span id="preview-revision">—</span></span>
+        </div>
+        <p id="preview-explanation" class="muted"></p>
+        <p id="preview-infeasible" class="error" hidden></p>
+
+        <h3>Proposed job changes</h3>
+        <table id="changes-table">
+          <thead>
+            <tr>
+              <th>Job</th>
+              <th>Old site</th>
+              <th>Old start</th>
+              <th>New site</th>
+              <th>New start</th>
+            </tr>
+          </thead>
+          <tbody id="changes-body"></tbody>
+        </table>
+        <div id="changes-empty" class="empty" hidden>No assignment changes in this preview.</div>
+
+        <div class="grid-2">
+          <div>
+            <h3>Metrics before</h3>
+            <dl class="metrics" id="metrics-before"></dl>
+          </div>
+          <div>
+            <h3>Metrics after</h3>
+            <dl class="metrics" id="metrics-after"></dl>
+          </div>
+        </div>
+
+        <h3>Cost breakdown</h3>
+        <dl class="metrics" id="cost-breakdown"></dl>
+      </div>
     </section>
   </main>
 

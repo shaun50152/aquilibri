@@ -46,6 +46,13 @@ Errors: `422` for unknown template, `deadline <= earliest_start`, or invalid bod
 
 Returns `SiteProfile` list with hourly water/GPU/energy fields (liters, kWh, USD/kWh).
 
+Profiles come from the same in-memory session snapshot the optimizer uses. Select the fixture with `SITE_PROFILES_FIXTURE`:
+
+| Value | Role |
+|-------|------|
+| `sites.json` | Short 3-hour synthetic horizon (missing-coverage tests) |
+| `sites_extended_synthetic.json` | 18-hour explicitly synthetic horizon for runnable previews |
+
 ### `GET /api/demo`
 
 ```json
@@ -60,19 +67,56 @@ Returns `SiteProfile` list with hourly water/GPU/energy fields (liters, kWh, USD
 
 Restores fixture jobs, resets demo clock to anchor, increments `revision`.
 
-## Planned endpoints (501 until implemented)
+## Reallocation preview (implemented)
+
+### `POST /api/reallocation/preview`
+
+Structured request (Gemini NL-only interpretation is not required):
+
+```json
+{
+  "mode": "routine",
+  "max_additional_cost_usd": 25.0
+}
+```
+
+Omitted `max_additional_cost_usd` is treated as **0.0**.
+
+Emergency:
+
+```json
+{
+  "mode": "emergency",
+  "emergency_restriction": {
+    "site_id": "site-alpha",
+    "water_cap_liters_per_hour": 115.0,
+    "start": "2026-03-15T20:00:00+00:00",
+    "end": "2026-03-16T12:00:00+00:00"
+  }
+}
+```
+
+`metrics_before` is the **computed reference schedule** (`metrics_before_label=computed_reference_schedule`), not the operator’s currently saved placements. `proposed_job_changes[].old_placement` still reflects saved jobs. Infeasible previews set `metrics_after` to `null` rather than inventing zeros.
+
+### Cost assumptions
+
+- Electricity: GPU × overlap hours × `energy_kwh_per_gpu_hour` × `electricity_usd_per_kwh`
+- Unfulfilled: `miss_penalty_usd`
+- `water_usd`: always 0 (no water tariff in schema)
+- No transfer or delay charges
+
+## Still 501
 
 | Method | Path | Request highlights |
 |--------|------|--------------------|
-| POST | `/api/reallocation/preview` | `mode`, optional NL instruction, `max_additional_cost_usd`, `emergency_restriction` |
-| POST | `/api/reallocation/apply` | `preview_id`, `input_revision` |
+| POST | `/api/reallocation/apply` | `preview_id`, `input_revision` (Person 1; use `preview_store.get_stored_preview`) |
 | POST | `/api/demo/advance` | (no body) advances simulated clock |
 
 `501` body: `{ "detail": "<reason>" }`.
 
 ### Emergency restriction validation
 
-`emergency_restriction` requires known `site_id`, `water_cap_liters_per_hour >= 0`, and `end > start`. Invalid bodies return `422` before the 501 handler runs (once implemented, same validation applies).
+`emergency_restriction` requires known `site_id`, `water_cap_liters_per_hour >= 0`, timezone-aware `start`/`end`, and `end > start`. Invalid bodies return `422`.
 
 ## Revision and stale previews
 

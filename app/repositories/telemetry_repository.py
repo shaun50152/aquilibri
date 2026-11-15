@@ -1,4 +1,8 @@
-"""Site telemetry boundary — fixture profiles today; Tiger Data later."""
+"""Site telemetry boundary — fixture profiles today; Tiger Data later.
+
+``GET /api/sites`` and the reallocation optimizer both read session profiles
+loaded from ``SITE_PROFILES_FIXTURE`` (see ``app.config`` / ``app.state``).
+"""
 
 from __future__ import annotations
 

@@ -26,6 +26,7 @@ class SessionState:
     revision: int
     jobs: list[Job] = field(default_factory=list)
     sites: list[SiteProfile] = field(default_factory=list)
+    sites_fixture_name: str = "sites.json"
     _jobs_fixture: list[dict[str, Any]] = field(default_factory=list, repr=False)
 
     def reload_from_fixtures(self) -> int:
@@ -39,7 +40,8 @@ class SessionState:
 def build_session_state() -> SessionState:
     settings = get_settings()
     jobs_raw = _load_json(FIXTURES_DIR / "jobs.json")
-    sites_raw = _load_json(FIXTURES_DIR / "sites.json")
+    sites_path = settings.site_profiles_path()
+    sites_raw = _load_json(sites_path)
 
     jobs_fixture = jobs_raw.get("jobs", jobs_raw if isinstance(jobs_raw, list) else [])
     sites_list = sites_raw.get("sites", sites_raw if isinstance(sites_raw, list) else [])
@@ -50,6 +52,7 @@ def build_session_state() -> SessionState:
         revision=int(jobs_raw.get("revision", 1) if isinstance(jobs_raw, dict) else 1),
         jobs=[Job.model_validate(copy.deepcopy(j)) for j in jobs_fixture],
         sites=[SiteProfile.model_validate(s) for s in sites_list],
+        sites_fixture_name=settings.site_profiles_fixture,
         _jobs_fixture=copy.deepcopy(jobs_fixture),
     )
     return state
@@ -68,4 +71,11 @@ def init_session_state() -> SessionState:
 def get_session_state() -> SessionState:
     if _session_state is None:
         raise RuntimeError("Session state not initialized — application startup did not run.")
+    return _session_state
+
+
+def replace_session_state(state: SessionState) -> SessionState:
+    """Test/helper hook to swap the in-memory session."""
+    global _session_state
+    _session_state = state
     return _session_state
