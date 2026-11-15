@@ -12,7 +12,7 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 # Documented demo anchor — fixtures use timestamps relative to this instant.
 DEMO_CLOCK_ANCHOR_ISO = "2026-03-15T18:00:00+00:00"
 
-SUPPORTED_DATA_MODES = frozenset({"fixtures"})
+SUPPORTED_DATA_MODES = frozenset({"fixtures", "mongodb"})
 
 # Synthetic site telemetry fixtures under fixtures/.
 # - sites.json: short 3-hour horizon (missing-coverage tests)
@@ -47,6 +47,10 @@ class Settings(BaseSettings):
                 f"Unsupported DATA_MODE={self.data_mode!r}. "
                 f"Supported modes: {sorted(SUPPORTED_DATA_MODES)}. "
                 "Cloud integrations are not enabled in this scaffold build."
+            )
+        if self.data_mode == "mongodb" and not self.mongodb_uri.strip():
+            raise RuntimeError(
+                "DATA_MODE=mongodb requires MONGODB_URI to be set (e.g. in local .env)."
             )
 
     def require_supported_site_profiles_fixture(self) -> None:

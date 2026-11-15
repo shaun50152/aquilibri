@@ -8,7 +8,7 @@ from app.schemas.scheduling import (
     ReallocationPreviewResponse,
 )
 from app.services import demo_worker, scheduling_service
-from app.services.scheduling_service import PreviewRequestError
+from app.services.scheduling_service import ApplyReallocationError, PreviewRequestError
 from app.state import get_session_state
 
 router = APIRouter(tags=["scheduling", "demo"])
@@ -45,14 +45,18 @@ def reallocation_preview(request: ReallocationPreviewRequest):
 @router.post(
     "/api/reallocation/apply",
     response_model=ReallocationApplyResponse,
-    responses={501: {"description": "Not implemented"}},
+    responses={
+        409: {"description": "Stale or invalid preview"},
+        501: {"description": "Not implemented"},
+    },
 )
 def reallocation_apply(request: ReallocationApplyRequest):
     try:
-        scheduling_service.apply_reallocation(request)
+        return scheduling_service.apply_reallocation(request)
+    except ApplyReallocationError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except NotImplementedError as exc:
         return _not_implemented(str(exc))
-    raise HTTPException(status_code=500, detail="Unexpected apply success in scaffold.")
 
 
 @router.post("/api/demo/advance")

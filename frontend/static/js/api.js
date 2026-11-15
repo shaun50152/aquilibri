@@ -102,7 +102,7 @@ function previewReallocation(body) {
   return apiRequestAllow501("/api/reallocation/preview", { method: "POST", body });
 }
 function applyReallocation(body) {
-  return apiRequestAllow501("/api/reallocation/apply", { method: "POST", body });
+  return apiRequest("/api/reallocation/apply", { method: "POST", body });
 }
 function advanceDemo() {
   return apiRequestAllow501("/api/demo/advance", { method: "POST" });

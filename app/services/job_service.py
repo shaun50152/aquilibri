@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 
 from app.repositories import job_repository
+from app.services import scheduling_service
 from app.schemas.jobs import (
     DEMO_OWNER_ID,
     TEMPLATE_DEFINITIONS,
@@ -69,6 +70,12 @@ def create_job(payload: JobCreateRequest) -> Job:
         result_url=None,
     )
 
-    saved = job_repository.save_job(job)
+    placed = scheduling_service.try_place_submitted_job(
+        job,
+        state.jobs,
+        state.sites,
+        state.current_time,
+    )
+    saved = job_repository.save_job(placed)
     job_repository.bump_revision()
     return saved

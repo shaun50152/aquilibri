@@ -93,10 +93,14 @@ def test_valid_job_submission(client):
     create = client.post("/api/jobs", json=payload)
     assert create.status_code == 201
     job = create.json()
-    assert job["status"] == "queued"
+    assert job["status"] in {"queued", "scheduled"}
     assert job["gpu_count"] == 4
-    assert job["assigned_site_id"] is None
-    assert job["scheduled_start"] is None
+    if job["status"] == "scheduled":
+        assert job["assigned_site_id"]
+        assert job["scheduled_start"]
+    else:
+        assert job["assigned_site_id"] is None
+        assert job["scheduled_start"] is None
 
     listing = client.get("/api/jobs").json()
     assert len(listing["jobs"]) == before_count + 1
@@ -157,18 +161,8 @@ def test_emergency_restriction_validation():
         )
 
 
-@pytest.mark.parametrize(
-    "path",
-    [
-        "/api/reallocation/apply",
-        "/api/demo/advance",
-    ],
-)
-def test_unimplemented_routes_return_501(client, path):
-    if path.endswith("apply"):
-        response = client.post(path, json={"preview_id": "x", "input_revision": 1})
-    else:
-        response = client.post(path)
+def test_unimplemented_demo_advance_returns_501(client):
+    response = client.post("/api/demo/advance")
     assert response.status_code == 501
     assert "detail" in response.json()
 

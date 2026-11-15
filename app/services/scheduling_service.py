@@ -44,8 +44,15 @@ from app.services.placement_engine import (
     optimize_placements,
     require_aware_utc,
 )
-from app.services.preview_store import StoredPreview, new_preview_id, store_preview
-from app.state import SessionState
+from app.repositories import job_repository
+from app.services.preview_store import (
+    StoredPreview,
+    delete_stored_preview,
+    get_stored_preview,
+    new_preview_id,
+    store_preview,
+)
+from app.state import SessionState, get_session_state
 
 
 class PreviewRequestError(ValueError):
@@ -951,9 +958,92 @@ def _emergency_preview(
     return response
 
 
+class ApplyReallocationError(Exception):
+    """Stale or invalid apply request (maps to HTTP 409)."""
+
+
+def try_place_submitted_job(
+    job: Job,
+    existing_jobs: list[Job],
+    sites: list[SiteProfile],
+    current_time: datetime,
+) -> Job:
+    """Initial placement for a newly submitted job; leaves status queued when infeasible."""
+    if job.status != JobStatus.queued:
+        return job
+    workload = list(existing_jobs) + [job]
+    gen = generate_placement_candidates(
+        workload,
+        sites,
+        current_time,
+        reconsider_job_ids=[job.id],
+    )
+    if not gen.candidates_by_job.get(job.id):
+        return job
+    jobs_by_id = {j.id: j for j in workload}
+    opt = optimize_placements(
+        gen.candidates_by_job,
+        gen.running_reservations,
+        sites,
+        jobs_by_id,
+        objective=OptimizeObjective.min_cost,
+        job_ids=[job.id],
+        allow_unfulfilled=set(),
+    )
+    if opt.status != FeasibilityStatus.feasible or job.id not in opt.selected:
+        return job
+    cand = opt.selected[job.id]
+    return job.model_copy(
+        update={
+            "status": JobStatus.scheduled,
+            "assigned_site_id": cand.site_id,
+            "scheduled_start": cand.start,
+        }
+    )
+
+
 def apply_reallocation(request: ReallocationApplyRequest) -> ReallocationApplyResponse:
-    raise NotImplementedError(
-        "POST /api/reallocation/apply is owned by Person 1. "
-        "Use app.services.preview_store.get_stored_preview(preview_id) and reject when "
-        "session_id or input_revision do not match the live session."
+    record = get_stored_preview(request.preview_id)
+    state = get_session_state()
+
+    if record is None:
+        raise ApplyReallocationError("Preview not found or expired")
+    if record.session_id != state.session_id:
+        raise ApplyReallocationError("Preview belongs to a different session")
+    if request.input_revision != record.input_revision:
+        raise ApplyReallocationError("input_revision does not match stored preview")
+    if record.input_revision != state.revision:
+        raise ApplyReallocationError("Session revision has changed since preview")
+
+    jobs_by_id = {j.id: j for j in state.jobs}
+    for assignment in record.proposed_assignments:
+        job = jobs_by_id.get(assignment.job_id)
+        if job is None:
+            continue
+        if assignment.unfulfilled:
+            updated = job.model_copy(
+                update={
+                    "status": JobStatus.unfulfilled,
+                    "assigned_site_id": None,
+                    "scheduled_start": None,
+                }
+            )
+        elif job.status in {JobStatus.running, JobStatus.completed, JobStatus.failed}:
+            continue
+        else:
+            updated = job.model_copy(
+                update={
+                    "status": JobStatus.scheduled,
+                    "assigned_site_id": assignment.assigned_site_id,
+                    "scheduled_start": assignment.scheduled_start,
+                }
+            )
+        job_repository.save_job(updated)
+
+    revision = job_repository.bump_revision()
+    delete_stored_preview(request.preview_id)
+    return ReallocationApplyResponse(
+        applied=True,
+        revision=revision,
+        message="Applied reallocation preview.",
     )

@@ -34,6 +34,20 @@ class SessionState:
         self.jobs = [Job.model_validate(copy.deepcopy(j)) for j in self._jobs_fixture]
         self.current_time = datetime.fromisoformat(DEMO_CLOCK_ANCHOR_ISO)
         self.revision += 1
+        settings = get_settings()
+        if settings.data_mode == "mongodb":
+            from app.integrations.mongodb import get_mongo_job_store
+
+            store = get_mongo_job_store()
+            store.replace_session_jobs(
+                self.session_id,
+                [j.model_dump(mode="json") for j in self.jobs],
+            )
+            store.set_session_meta(
+                self.session_id,
+                revision=self.revision,
+                current_time=self.current_time.isoformat(),
+            )
         return len(self.jobs)
 
 
@@ -46,11 +60,49 @@ def build_session_state() -> SessionState:
     jobs_fixture = jobs_raw.get("jobs", jobs_raw if isinstance(jobs_raw, list) else [])
     sites_list = sites_raw.get("sites", sites_raw if isinstance(sites_raw, list) else [])
 
+    fixture_revision = int(jobs_raw.get("revision", 1) if isinstance(jobs_raw, dict) else 1)
+    anchor_time = datetime.fromisoformat(DEMO_CLOCK_ANCHOR_ISO)
+
+    jobs: list[Job]
+    revision: int
+    current_time: datetime
+
+    if settings.data_mode == "mongodb":
+        from app.integrations.mongodb import get_mongo_job_store
+
+        store = get_mongo_job_store()
+        session_id = settings.demo_session_id
+        stored_jobs = store.list_jobs(session_id)
+        if not stored_jobs:
+            jobs = [Job.model_validate(copy.deepcopy(j)) for j in jobs_fixture]
+            revision = fixture_revision
+            current_time = anchor_time
+            store.replace_session_jobs(session_id, [j.model_dump(mode="json") for j in jobs])
+            store.set_session_meta(
+                session_id,
+                revision=revision,
+                current_time=current_time.isoformat(),
+            )
+        else:
+            jobs = [Job.model_validate(j) for j in stored_jobs]
+            revision, current_time_str = store.get_session_meta(session_id)
+            if revision <= 0:
+                revision = fixture_revision
+            current_time = (
+                datetime.fromisoformat(current_time_str)
+                if current_time_str
+                else anchor_time
+            )
+    else:
+        jobs = [Job.model_validate(copy.deepcopy(j)) for j in jobs_fixture]
+        revision = fixture_revision
+        current_time = anchor_time
+
     state = SessionState(
         session_id=settings.demo_session_id,
-        current_time=datetime.fromisoformat(DEMO_CLOCK_ANCHOR_ISO),
-        revision=int(jobs_raw.get("revision", 1) if isinstance(jobs_raw, dict) else 1),
-        jobs=[Job.model_validate(copy.deepcopy(j)) for j in jobs_fixture],
+        current_time=current_time,
+        revision=revision,
+        jobs=jobs,
         sites=[SiteProfile.model_validate(s) for s in sites_list],
         sites_fixture_name=settings.site_profiles_fixture,
         _jobs_fixture=copy.deepcopy(jobs_fixture),
