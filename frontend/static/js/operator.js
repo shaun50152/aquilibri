@@ -7,8 +7,7 @@ const freshDemo = () => (window.AQ_DEMO ? JSON.parse(JSON.stringify(window.AQ_DE
 let DEMO = isVisualDemoMode() ? freshDemo() : null;
 
 const $ = (id) => document.getElementById(id);
-const ringSvg = $("fleet-ring");
-const ringOverlay = $("ring-overlay");
+const ringHost = $("fleet-flow");
 const panel = $("preview-panel");
 const cmpEl = $("cmp");
 
@@ -245,32 +244,36 @@ function renderRing(D) {
   });
   const landSites = new Set(D.appliedChanges.map((c) => c.new_placement?.assigned_site_id).filter(Boolean));
 
-  let top = 1;
-  const tankSites = D.models.map((m, i) => {
+  const flowSites = D.models.map((m, i) => {
     const s = m.site;
     const h = basisHour(m);
     const pm = D.propModels ? D.propModels[i] : null;
-    const ghostW = pm && moved.has(s.site_id) ? (pm.series.find((x) => x.t === h.t) || pm.peak).w : null;
+    const ghost = pm && moved.has(s.site_id) ? (pm.series.find((x) => x.t === h.t) || pm.peak).w : null;
     const over = m.overH > 0;
-    top = Math.max(top, h.w, h.c ?? 0, ghostW ?? 0);
-    let sub = h.c != null ? `${fmtNum(h.w)} / ${fmtNum(h.c)} L/h` : `${fmtNum(h.w)} L/h · no cap`;
-    if (ghostW != null && Math.abs(ghostW - h.w) > 0.5) sub = `${fmtNum(h.w)} → ${fmtNum(ghostW)} L/h`;
-    if (over) sub = `▲ ${fmtNum(h.w)} / ${fmtNum(h.c)} · ${m.overH} h over`;
-    // compact figure for the label row (units are in the legend)
-    let fig = h.c != null ? `${fmtNum(h.w)} / ${fmtNum(h.c)}` : `${fmtNum(h.w)} · no cap`;
-    if (ghostW != null && Math.abs(ghostW - h.w) > 0.5) fig = `${fmtNum(h.w)} → ${fmtNum(ghostW)}`;
-    if (over) fig = `▲ ${fmtNum(h.w)} / ${fmtNum(h.c)}`;
-    const isSel = selSite === s.site_id;
+    const shifts = ghost != null && Math.abs(ghost - h.w) > 0.5;
+    let fig = h.c != null ? `${fmtNum(h.w)} / ${fmtNum(h.c)} L/h` : `${fmtNum(h.w)} L/h · no cap`;
+    let figTone = "";
+    if (over) {
+      fig = `▲ ${fmtNum(h.w)} / ${fmtNum(h.c)} L/h`;
+      figTone = "over";
+    }
+    if (shifts) {
+      fig = `${fmtNum(h.w)} → ${fmtNum(ghost)} L/h`;
+      figTone = ghost < h.w ? "good" : "";
+    }
+    const here = jobs.filter((j) => j.assigned_site_id === s.site_id && (j.status === "running" || j.status === "scheduled")).length;
+    const sub = `${h.u}% GPU · ${here} job${here === 1 ? "" : "s"}${over ? ` · ${m.overH} h over cap` : ""} · at ${hhmm(h.t)}`;
     const aria =
       `${s.name}: peak modeled withdrawal ${fmtNum(h.w)} liters per hour at ${hhmm(h.t)} UTC` +
       (h.c != null ? ` against a cap of ${fmtNum(h.c)}` : ", no cap that hour") +
       `, ${h.u} percent GPU load from assignments` +
       (over ? `, over cap for ${m.overH} modeled hour${m.overH === 1 ? "" : "s"}` : ", within cap") +
-      (ghostW != null ? `, proposed ${fmtNum(ghostW)} liters per hour` : "") +
-      ". Simulated.";
+      (ghost != null ? `, proposed ${fmtNum(ghost)} liters per hour` : "") +
+      ". Simulated. Opens site details.";
     return {
-      key: s.site_id, short: siteShort(s), w: h.w, c: h.c, ghostW, u: h.u, over, sub, fig, aria,
-      selected: isSel,
+      key: s.site_id, name: s.name.replace(/ DC$/, ""), fig, figTone, sub,
+      w: h.w, c: h.c, ghost, weight: h.u / 100, active: h.u > 0, over, aria,
+      selected: selSite === s.site_id,
       land: showApplied && landSites.has(s.site_id) ? applied.key : "",
       onClick: () => {
         selSite = selSite === s.site_id ? null : s.site_id;
@@ -279,53 +282,63 @@ function renderRing(D) {
     };
   });
 
-  const arcs = [];
-  const chips = [];
+  // Routes: one chip per destination ("○ JOB-014, JOB-009 →") and one per origin ("2 leaving").
+  const routes = [];
   const drops = [];
   const real = (list) => list.filter((c) => c.new_placement?.assigned_site_id && c.old_placement?.assigned_site_id !== c.new_placement.assigned_site_id);
-  // One chip per state keeps the row calm: it labels the first move and counts the rest.
-  const more = (list) => (list.length > 1 ? ` · +${list.length - 1} more` : "");
-
-  const moving = real(D.changes);
-  moving.forEach((c, k) => {
-    const key = `p:${c.job_id}`;
-    arcs.push({ key, from: c.old_placement?.assigned_site_id || "queue", to: c.new_placement.assigned_site_id, kind: "proposed", stale: D.stale, focus: focusMove && k === 0 });
-    if (k === 0) chips.push({ key: `c:${c.job_id}`, arc: key, text: `○ ${shortJobId(c.job_id)} · PROPOSED${D.stale ? " · STALE" : ""}${more(moving)}`, bg: "#FFFFFF", fg: "#0F6E76", bc: "#0F6E76", bstyle: "dashed" });
-  });
+  const group = (list, pick) => {
+    const m = new Map();
+    for (const c of list) {
+      const k = pick(c);
+      if (!k) continue;
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(shortJobId(c.job_id));
+    }
+    return m;
+  };
+  const names = (ids) => (ids.length > 2 ? `${ids[0]} +${ids.length - 1}` : ids.join(", "));
+  const addMoves = (list, kind) => {
+    const mv = real(list);
+    for (const [to, ids] of group(mv, (c) => c.new_placement.assigned_site_id)) {
+      const text = kind === "proposed" ? `○ ${names(ids)} →${D.stale ? " · stale" : ""}` : `● ${names(ids)} ✓`;
+      routes.push({ key: `${kind[0]}:${to}`, to, kind, text, stale: kind === "proposed" && D.stale });
+    }
+    for (const [from, ids] of group(mv, (c) => c.old_placement?.assigned_site_id)) {
+      routes.push({ key: `l:${from}`, to: from, kind: "leave", text: kind === "proposed" ? `${ids.length} leaving` : `${ids.length} moved off`, stale: kind === "proposed" && D.stale });
+    }
+    return mv;
+  };
+  addMoves(D.changes, "proposed");
   if (D.infeasible) {
     const miss = (preview.deadline_outcomes || []).find((o) => !o.met_deadline);
-    if (miss) {
-      const job = jobs.find((j) => j.id === miss.job_id);
-      const key = `x:${miss.job_id}`;
-      arcs.push({ key, from: job?.assigned_site_id || "queue", to: null, kind: "infeasible" });
-      chips.push({ key, arc: key, text: `✕ no site fits ${shortJobId(miss.job_id)}`, bg: "#FFF3EA", fg: "#B4410F", bc: "#B4410F", bstyle: "solid" });
-    }
+    const job = miss ? jobs.find((j) => j.id === miss.job_id) : null;
+    if (miss && job?.assigned_site_id) routes.push({ key: `x:${miss.job_id}`, to: job.assigned_site_id, kind: "infeasible", text: `✕ no site fits ${shortJobId(miss.job_id)}` });
   }
   if (showApplied) {
-    const done = real(D.appliedChanges);
-    done.forEach((c, k) => {
-      const key = `a:${c.job_id}`;
-      arcs.push({ key, from: c.old_placement?.assigned_site_id || "queue", to: c.new_placement.assigned_site_id, kind: "applied" });
-      if (k === 0) chips.push({ key: `c:${c.job_id}`, arc: key, text: `● ${shortJobId(c.job_id)} · APPLIED ✓${more(done)}`, bg: "#0B4F58", fg: "#FFFFFF", bc: "#FFFFFF", bstyle: "solid" });
-      drops.push({ key: `${applied.key}:${c.job_id}`, arc: key });
-    });
+    for (const c of addMoves(D.appliedChanges, "applied")) drops.push({ key: `${applied.key}:${c.job_id}`, to: c.new_placement.assigned_site_id });
   }
-  // A queued job that the scheduler just placed hops from the queue well into its tank.
+  // A queued job the scheduler just placed runs down its route.
   const now = Date.now();
   for (const p of recentPlacements) {
     if (p.until < now) continue;
-    const key = `q:${p.job}`;
-    arcs.push({ key, from: "queue", to: p.to, kind: "applied" });
-    drops.push({ key: `${p.key}`, arc: key });
+    routes.push({ key: `q:${p.job}`, to: p.to, kind: "place", text: `${shortJobId(p.job)} →` });
+    drops.push({ key: p.key, to: p.to });
   }
 
   const queued = jobs.filter((j) => j.status === "queued" && !j.assigned_site_id).length;
-  drawTanks(ringSvg, ringOverlay, {
+  const running = jobs.filter((j) => j.status === "running").length;
+  drawFlow(ringHost, {
+    meter: true,
     loading: D.loading,
-    scaleMax: niceCeil(top * 1.12),
-    sites: tankSites,
-    queue: { count: queued },
-    arcs, chips, drops,
+    hub: {
+      title: "Queue",
+      sub: D.loading ? "Solver running…" : `${queued ? `${queued} waiting` : "Nothing waiting"} · ${running} running`,
+      count: queued,
+      aria: `Queue: ${queued} job${queued === 1 ? "" : "s"} waiting for a site, ${running} running across the fleet.`,
+    },
+    sites: flowSites,
+    routes,
+    drops,
     falls: pendingFalls.splice(0),
   });
 
@@ -403,12 +416,18 @@ function renderPanel(D) {
   } else {
     const restricted = declared ? siteOf(declared.site_id) : null;
     setTag(declared ? "Awaiting preview" : "No preview", "#EEF3F3", "#5A6B72", "solid", "transparent");
-    out.push(el("div", {
-      className: "cmpEmpty",
-      text: restricted && D.breaches.some((m) => m.site === restricted)
-        ? `${siteShort(restricted)} is over its temporary cap (modeled). Preview a plan and Gemini will propose the smallest set of moves, then show the cost and water before and after.`
-        : "No preview yet. Ask for a schedule above. Gemini will explain what the solver returns, and the full comparison appears here before anything is applied.",
-    }));
+    const openBtn = el("button", { type: "button", className: "btn btnP", text: "New schedule" });
+    openBtn.addEventListener("click", () => $("schedule-open").click());
+    out.push(el("div", { className: "cmpEmpty" }, [
+      el("div", { className: "cmpEmptyIn" }, [
+        el("p", {
+          text: restricted && D.breaches.some((m) => m.site === restricted)
+            ? `${siteShort(restricted)} is over its temporary cap (modeled). Preview a plan and Gemini will propose the smallest set of moves, then show the cost and water before and after.`
+            : "No preview yet. Open New schedule to describe a restriction or budget. Gemini explains what the solver returns, and the comparison appears here before anything is applied.",
+        }),
+        openBtn,
+      ]),
+    ]));
   }
   panel.replaceChildren(...out);
 }
@@ -702,8 +721,10 @@ async function onPreview() {
     req = buildRequest();
   } catch (err) {
     setError($("cmd-error"), err.message);
+    openSheet();
     return;
   }
+  if (sheet.open) sheet.close();
   if (req.restriction) declared = req.restriction;
   previewState = "loading";
   preview = null;
@@ -781,19 +802,10 @@ async function onApply() {
   await loadAll();
 }
 
-/* In the one-screen layout the plan panel lives below the form in a scrolling column:
-   bring it into view whenever the preview state changes. */
-function showPlanPanel() {
-  const col = null;
-  if (!col || col.scrollHeight <= col.clientHeight) return;
-  col.scrollTo({ top: cmpEl.offsetTop - col.offsetTop, behavior: prefersReducedMotion() ? "auto" : "smooth" });
-}
-
 function updatePreviewButton() {
   const b = $("preview-btn");
   b.disabled = previewState === "loading";
   b.textContent = previewState === "loading" ? "Solving…" : previewState === "ready" ? "Preview again" : "Preview schedule";
-  if (previewState !== "none") requestAnimationFrame(showPlanPanel);
 }
 
 /* =========================== data =========================== */
@@ -830,6 +842,15 @@ for (const id of ["emer-site", "emer-cap", "emer-start", "emer-end"]) {
 }
 $("instruction").addEventListener("input", () => (instructionDirty = true));
 $("preview-btn").addEventListener("click", onPreview);
+const sheet = $("schedule-sheet");
+function openSheet() {
+  if (!sheet.open) sheet.showModal();
+}
+$("schedule-open").addEventListener("click", openSheet);
+$("schedule-close").addEventListener("click", () => sheet.close());
+sheet.addEventListener("click", (e) => {
+  if (e.target === sheet) sheet.close(); // backdrop
+});
 $("band-cta").addEventListener("click", onPreview);
 $("drawer-close").addEventListener("click", () => {
   selSite = null;
@@ -967,16 +988,10 @@ function startPoll() {
   }, 4000);
 }
 
-let resizeTimer = null;
-window.addEventListener("resize", () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => sites.length && renderAll(), 150);
-});
-
 loadAll().then(startPoll);
 
 initLayout({
-  blocks: ".ringSec, .cmd, .cmp, .chartSec, .queueSec, .stat",
+  blocks: ".fleetCard, .cmp, .chartSec, .queueSec, .stat",
   texts: ".pageTitle, .cardTitle",
   scrollers: ".qScroll",
 });

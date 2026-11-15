@@ -222,3 +222,7 @@ __marimo__/
 # AquaLibri local artifacts
 results/
 *.results.json
+
+# Local headless-browser profiles
+frontend/chprof*/
+chprof*/

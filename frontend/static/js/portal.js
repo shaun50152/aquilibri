@@ -11,7 +11,7 @@ const earliestInput = $("earliest_start");
 const deadlineInput = $("deadline");
 const submitBtn = $("submit-btn");
 const formError = $("form-error");
-const formSuccess = $("form-success");
+const sheet = $("new-sheet");
 const jobsBody = $("jobs-body");
 
 let sites = [];
@@ -19,7 +19,6 @@ let jobs = [];
 let clockIso = null;
 let ownerId = null;
 let selectedJobId = null;
-let successJobId = null;
 let loadedOnce = false;
 let pollTimer = null;
 const SEEN_NOTICES_KEY = "aq.seenNotifications";
@@ -138,47 +137,80 @@ function renderHeader() {
 }
 
 function renderMini() {
-  const n = sites.length;
   const sel = jobs.find((j) => j.id === selectedJobId);
   const o = sel ? obs.get(sel.id) : null;
   const tMs = clockIso ? new Date(clockIso).getTime() : Date.now();
-  let top = 1;
-  const tankSites = sites.map((s) => {
+  const mine = myJobs();
+  const live = mine.filter((j) => j.assigned_site_id && j.status !== "completed" && j.status !== "failed" && j.status !== "unfulfilled");
+  const now = Date.now();
+  const recent = placements.filter((p) => p.until >= now);
+
+  // Show every site when there are few; otherwise the sites that matter to you.
+  let shown = sites;
+  if (sites.length > 5) {
+    const want = new Set(live.map((j) => j.assigned_site_id));
+    if (sel?.assigned_site_id) want.add(sel.assigned_site_id);
+    if (o?.move) want.add(o.move.from).add(o.move.to);
+    recent.forEach((p) => want.add(p.to));
+    const byWater = sites.map((s) => ({ s, w: siteHourModel(s, jobs, tMs).w })).sort((x, y) => x.w - y.w);
+    for (const { s } of byWater) {
+      if (want.size >= 3) break;
+      want.add(s.site_id);
+    }
+    shown = sites.filter((s) => want.has(s.site_id)).slice(0, 5);
+  }
+
+  const flowSites = shown.map((s) => {
     const m = siteHourModel(s, jobs, tMs);
-    top = Math.max(top, m.w, m.c ?? 0);
-    return { key: s.site_id, short: siteShort(s), w: m.w, c: m.c, u: m.u, over: m.c != null && m.w > m.c, highlight: Boolean(sel && sel.assigned_site_id === s.site_id) };
+    const k = live.filter((j) => j.assigned_site_id === s.site_id).length;
+    const over = m.c != null && m.w > m.c;
+    const isSel = Boolean(sel && sel.assigned_site_id === s.site_id);
+    return {
+      key: s.site_id,
+      name: s.name.replace(/ DC$/, ""),
+      fig: over ? `▲ ${fmtNum(m.w)} L/h` : `${fmtNum(m.w)} L/h`,
+      figTone: over ? "over" : "",
+      sub: `${k ? `${k} of your job${k === 1 ? "" : "s"}` : "None of yours"} · ${m.gpus} GPUs busy`,
+      w: m.w, c: m.c, weight: m.u / 100, active: m.gpus > 0, over,
+      highlight: isSel,
+    };
   });
-  const arcs = [];
+
+  const routes = [];
   const drops = [];
   if (sel && o?.move) {
-    const key = `mv:${sel.id}:${o.move.from}>${o.move.to}`;
-    arcs.push({ key, from: o.move.from, to: o.move.to, kind: "applied" });
-    drops.push({ key, arc: key });
+    routes.push({ key: `mv:${sel.id}`, to: o.move.to, kind: "applied", text: `● ${shortJobId(sel.id)} moved ✓` });
+    routes.push({ key: `mf:${sel.id}`, to: o.move.from, kind: "leave", text: "moved off" });
+    drops.push({ key: `mv:${sel.id}:${o.move.from}>${o.move.to}`, to: o.move.to });
+  } else if (sel?.assigned_site_id && sel.status !== "completed" && sel.status !== "failed") {
+    routes.push({ key: `sel:${sel.id}`, to: sel.assigned_site_id, kind: "sel", text: `${shortJobId(sel.id)} →` });
   }
-  const now = Date.now();
-  for (const p of placements) {
-    if (p.until < now) continue;
-    const key = `q:${p.job}`;
-    arcs.push({ key, from: "queue", to: p.to, kind: "applied" });
-    drops.push({ key: p.key, arc: key });
+  for (const p of recent) {
+    routes.push({ key: `q:${p.job}`, to: p.to, kind: "place", text: `${shortJobId(p.job)} →` });
+    drops.push({ key: p.key, to: p.to });
   }
-  let caption = `${numberWord(n)} simulated site${n === 1 ? "" : "s"}. Water level is each site's modeled withdrawal right now.`;
+
+  const queued = mine.filter((j) => j.status === "queued" && !j.assigned_site_id).length;
+  let caption = "Running routes carry a stream of droplets. Each tank shows that site's modeled water right now; the ember line is its cap.";
   if (sel) {
     const id = shortJobId(sel.id);
-    if (o?.move) caption = `${id} moved from ${siteShort(siteName(o.move.from))} to ${siteShort(siteName(o.move.to))}. Simulated.`;
-    else if (sel.assigned_site_id) caption = `${id} runs on ${siteName(sel.assigned_site_id)} (outlined). Simulated.`;
+    if (o?.move) caption = `${id} moved from ${siteName(o.move.from)} to ${siteName(o.move.to)}. Simulated.`;
+    else if (sel.assigned_site_id) caption = `${id} runs on ${siteName(sel.assigned_site_id)}, highlighted. Simulated.`;
     else caption = `${id} is in the queue, waiting for a site.`;
   }
   $("mini-caption").textContent = caption;
-  const queued = myJobs().filter((j) => j.status === "queued" && !j.assigned_site_id).length;
-  const svgEl = $("topology-mini");
-  svgEl.setAttribute("aria-label", caption);
-  drawTanks(svgEl, null, {
-    mini: true,
-    scaleMax: niceCeil(top * 1.15),
-    sites: tankSites,
-    queue: { count: queued },
-    arcs, drops,
+  $("place-note").textContent = sites.length > shown.length ? `${shown.length} of ${sites.length} sites shown` : `${sites.length} simulated site${sites.length === 1 ? "" : "s"}`;
+  drawFlow($("place-flow"), {
+    prefer: "one",
+    hub: {
+      title: "Queue",
+      sub: queued ? `${queued} waiting` : "Nothing waiting",
+      count: queued,
+      aria: `Queue: ${queued} of your jobs waiting for a site.`,
+    },
+    sites: flowSites,
+    routes,
+    drops,
     falls: pendingFalls.splice(0),
   });
 }
@@ -288,9 +320,6 @@ function renderDetail() {
   else if (status === "completed") phase = 3;
   let prog = 0;
   if (status === "running" && clockMs != null && startMs != null) prog = Math.max(0, Math.min((clockMs - startMs) / (dur * HOUR_MS), 1));
-  let fill = [0, 33.3, 66.6 + prog * 33.3 * 0.9, 100][phase];
-  if (status === "failed") fill = 66.6;
-  if (status === "unfulfilled") fill = 0;
   const lastLabel = status === "failed" ? "Failed" : status === "unfulfilled" ? "Unfulfilled" : "Complete";
   const labels = ["Submitted", "Placed", "Running", lastLabel];
   const endMs = jobEnd(job);
@@ -300,30 +329,6 @@ function renderDetail() {
     startMs != null && placed ? (phase >= 2 ? stampUtc(startMs) : `est. ${stampUtc(startMs)}`) : "—",
     job.completed_at ? stampUtc(job.completed_at) : endMs != null && placed && !bad ? `est. ${stampUtc(endMs)}` : "—",
   ];
-  const fillEl = $("j-fill");
-  fillEl.className = `jFill${status === "running" ? " fillRun" : ""}`;
-  requestAnimationFrame(() => (fillEl.style.width = `${fill.toFixed(1)}%`));
-  const track = $("j-track");
-  track.querySelectorAll(".jStep").forEach((n) => n.remove());
-  const labelsEl = $("j-labels");
-  labelsEl.replaceChildren();
-  [0, 1, 2, 3].forEach((i) => {
-    const done = i < phase || (i === phase && phase === 3);
-    const cur = i === phase && phase < 3 && !bad;
-    const isBadStep = bad && i === 3;
-    const step = el("div", { className: `jStep${cur ? " pulseNode" : ""}` }, [el("span", { "aria-hidden": "true", text: isBadStep ? "✕" : done ? "✓" : "" })]);
-    step.style.left = `${(i * 33.333).toFixed(2)}%`;
-    step.style.background = isBadStep ? "#B4410F" : done ? "#2A9D9F" : "#FFFFFF";
-    step.style.borderColor = isBadStep ? "#B4410F" : done || cur ? "#2A9D9F" : "#C9D6D6";
-    track.appendChild(step);
-    labelsEl.appendChild(
-      el("div", { className: `jLabel${done || cur || isBadStep ? " isOn" : ""}` }, [
-        el("strong", { text: labels[i] }),
-        el("span", { className: "mono jTime", text: times[i] }),
-      ]),
-    );
-  });
-
   let progressLine = "Waiting in the queue. The scheduler has not picked a site yet.";
   if (status === "scheduled") {
     if (startMs != null && clockMs != null) {
@@ -340,7 +345,49 @@ function renderDetail() {
   if (status === "completed") progressLine = `Finished. Simulated runtime: ${fmtHours(dur)} h of ${fmtHours(dur)} h · 100%`;
   if (status === "failed") progressLine = "Stopped. No result was produced.";
   if (status === "unfulfilled") progressLine = "Not placed before the deadline.";
-  $("runtime-progress").textContent = progressLine;
+
+  const fillEl = $("j-fill");
+  fillEl.className = `vjFill${status === "running" ? " fillRunV" : ""}${bad ? " isBad" : ""}`;
+  const stepsEl = $("j-steps");
+  stepsEl.replaceChildren(
+    ...[0, 1, 2, 3].map((i) => {
+      const done = i < phase || (i === phase && phase === 3);
+      const cur = i === phase && phase < 3 && !bad;
+      const isBadStep = bad && i === 3;
+      const state = isBadStep ? "isBad" : done ? "isDone" : cur ? "isCur" : "isTodo";
+      const body = [
+        el("span", { className: "vjHead" }, [el("strong", { className: "vjLabel", text: labels[i] }), el("span", { className: "mono vjTime", text: times[i] })]),
+      ];
+      if (cur || (isBadStep && i === 3) || (phase === 3 && i === 3)) {
+        const box = [el("span", { className: "vjNow", id: "runtime-progress", text: progressLine })];
+        if (status === "running") {
+          const bar = el("span", { className: "vjBar", "aria-hidden": "true" }, [el("span", { className: "vjBarFill fillRun" })]);
+          requestAnimationFrame(() => (bar.firstChild.style.width = `${Math.round(prog * 100)}%`));
+          box.push(bar);
+        }
+        body.push(el("span", { className: "vjNowBox" }, box));
+      }
+      return el("li", { className: `vjStep ${state}`, "aria-current": cur ? "step" : null }, [
+        el("span", { className: `vjDot${cur ? " pulseNode" : ""}`, "aria-hidden": "true", text: isBadStep ? "✕" : done ? "✓" : "" }),
+        el("span", { className: "vjBody" }, body),
+      ]);
+    }),
+  );
+  // The rail runs dot to dot; the fill stops at the current dot (plus runtime progress).
+  requestAnimationFrame(() => {
+    const dots = Array.from(stepsEl.querySelectorAll(".vjDot"));
+    if (dots.length < 4) return;
+    const top = stepsEl.parentElement.getBoundingClientRect().top;
+    const cy = (d) => d.getBoundingClientRect().top + d.offsetHeight / 2 - top;
+    const y = dots.map(cy);
+    const rail = fillEl.parentElement;
+    rail.style.top = `${y[0]}px`;
+    rail.style.height = `${y[3] - y[0]}px`;
+    let to = y[Math.min(phase, 3)];
+    if (status === "running" && phase < 3) to += prog * (y[phase + 1] - y[phase]);
+    if (status === "unfulfilled") to = y[0];
+    fillEl.style.height = `${Math.max(0, to - y[0]).toFixed(1)}px`;
+  });
 
   // activity
   const log = $("activity-log");
@@ -359,9 +406,13 @@ function renderDetail() {
   );
 
   $("d-site").textContent = siteName(job.assigned_site_id);
-  $("d-start").textContent = placed && startMs != null ? `${fullUtc(startMs)} UTC` : "—";
-  $("d-dl").textContent = `${fullUtc(job.deadline)} UTC`;
-  $("d-es").textContent = `${fullUtc(job.earliest_start)} UTC`;
+  $("d-start").textContent = placed && startMs != null ? stampUtc(startMs) : "—";
+  $("d-dl").textContent = stampUtc(job.deadline);
+  $("d-es").textContent = `${stampUtc(job.earliest_start)} UTC`;
+  $("act-count").textContent = `${o.events.length} event${o.events.length === 1 ? "" : "s"}`;
+  $("d-site").classList.toggle("isMuted", !placed);
+  const icon = $("d-icon");
+  icon.className = `dIcon is${status[0].toUpperCase()}${status.slice(1)}`;
 
   // result
   const result = $("d-result");
@@ -383,14 +434,11 @@ function renderDetail() {
   }
 }
 
-/* ---------- success card + completion notice ---------- */
-function renderSuccess() {
-  const job = jobs.find((j) => j.id === successJobId);
-  if (!job) return;
-  $("success-title").textContent = `${shortJobId(job.id)} is in.`;
-  $("success-text").textContent = job.assigned_site_id
-    ? `Placed on ${siteName(job.assigned_site_id)}. It starts at ${hhmm(job.scheduled_start)} UTC and must finish by ${hhmm(job.deadline)} on ${MONTHS[new Date(job.deadline).getUTCMonth()]} ${new Date(job.deadline).getUTCDate()}. We will tell you if it moves.`
-    : "Accepted and queued. The scheduler is choosing a site now.";
+/* ---------- submit result + completion notice ---------- */
+function successText(job) {
+  return job.assigned_site_id
+    ? `${shortJobId(job.id)} is in. Placed on ${siteName(job.assigned_site_id)}, starting ${hhmm(job.scheduled_start)} UTC.`
+    : `${shortJobId(job.id)} is in. Queued while the scheduler picks a site.`;
 }
 
 function showCompletion(job, { toastIt = true } = {}) {
@@ -457,7 +505,6 @@ async function loadAll({ first = false } = {}) {
     renderList();
     renderDetail();
     renderMini();
-    renderSuccess();
     updateEstimate();
     loadedOnce = true;
   } catch (err) {
@@ -509,10 +556,8 @@ form.addEventListener("submit", async (event) => {
     observe(created, true);
     pendingFalls.push({ key: `f:${created.id}`, to: created.assigned_site_id || "queue" });
     selectedJobId = created.id;
-    successJobId = created.id;
-    form.hidden = true;
-    formSuccess.hidden = false;
-    renderSuccess();
+    if (sheet.open) sheet.close();
+    toast(successText(created));
     await loadAll();
   } catch (err) {
     showFormError(err.status ? err.message : "Network error. Is the API server running?");
@@ -521,11 +566,17 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-$("submit-another").addEventListener("click", () => {
-  formSuccess.hidden = true;
-  form.hidden = false;
-  successJobId = null;
+function openSheet() {
+  if (sheet.open) return;
+  showFormError(null);
+  sheet.showModal();
   form.querySelector('input[name="template"]:checked')?.focus();
+}
+$("new-open").addEventListener("click", openSheet);
+$("empty-new").addEventListener("click", openSheet);
+$("new-close").addEventListener("click", () => sheet.close());
+sheet.addEventListener("click", (e) => {
+  if (e.target === sheet) sheet.close(); // backdrop
 });
 $("notice-dismiss").addEventListener("click", () => ($("notice").hidden = true));
 
@@ -567,7 +618,7 @@ updateEstimate();
 loadAll({ first: true }).then(startPoll);
 
 initLayout({
-  blocks: ".submitCard, .jobsCard, .placeCard, .stat",
+  blocks: ".jobsCard, .placeCard, .detail, .stat",
   texts: ".pageTitle, .cardTitle",
   scrollers: "#jobs-body",
 });

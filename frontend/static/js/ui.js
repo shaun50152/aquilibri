@@ -206,11 +206,15 @@ function siteHourModel(site, jobs, tMs) {
   };
 }
 
-/* ---------- tank row (fleet instrument) ----------
-   Glass tanks in one row. Water level = withdrawal, fine ember line = cap, thin bar at the
-   base = GPU load. Moves are arcs over the tops: dashed = proposed, solid + droplet = applied.
-   An optional dashed "Queue" well sits first; new jobs fall into their tank or the queue. */
-const TANK = { SLOT: 90, TW: 50, TOP: 116, TH: 210, PAD: 24 };
+/* ---------- flow map (queue → sites) ----------
+   A Queue node feeds curved routes into site cards. Each card carries a small glass tank
+   (water level = modeled withdrawal, ember line = cap). Routes with work on them carry a
+   stream of droplets; thickness follows GPU load. Moves are drawn as routes with a chip:
+   dashed = proposed, solid = applied, ember = leaving / infeasible.
+   Layout adapts to the width: "one" (queue left, sites right), "two" (queue in the middle,
+   sites on both sides) for many sites, "stack" (queue on top, a rail down the list) on phones. */
+
+const ICON_LAYERS = "M12 3 3 7.5l9 4.5 9-4.5L12 3Z M3 12l9 4.5 9-4.5 M3 16.5 12 21l9-4.5";
 
 function niceCeil(v) {
   if (v <= 0) return 100;
@@ -219,304 +223,312 @@ function niceCeil(v) {
   return 10 * p;
 }
 
+function iconSvg(d, size) {
+  return svg("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 1.8, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" }, [svg("path", { d })]);
+}
+
+function flowMode(width, n, prefer) {
+  if (width < 560) return "stack";
+  if (prefer !== "one" && n > 5 && width >= 860) return "two";
+  return "one";
+}
+
+function cubicAt(p0, p1, p2, p3, t) {
+  const u = 1 - t;
+  const a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+  return [a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0], a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1]];
+}
+
 /**
  * view: {
- *   mini, loading, scaleMax,
- *   sites: [{ key, short, w, c, ghostW, u, over, overH, selected, highlight, sub, aria, onClick, land }],
- *   queue: { count } | null,
- *   arcs:  [{ key, from, to, kind: "proposed"|"applied"|"infeasible", stale, focus }],
- *   chips: [{ key, arc, text, bg, fg, bc, bstyle }],
- *   drops: [{ key, arc }], falls: [{ key, to }]
- * }  `from`/`to` are site keys or "queue".
+ *   prefer: "auto" | "one", meter: bool, loading: bool,
+ *   hub:   { title, sub, count, aria },
+ *   sites: [{ key, name, fig, figTone: ""|"over"|"good", sub, w, c, ghost, weight 0..1, active,
+ *             over, selected, highlight, aria, onClick, land }],
+ *   routes: [{ key, to, kind: "proposed"|"applied"|"place"|"sel"|"leave"|"infeasible", text, stale }],
+ *   drops: [{ key, to }], falls: [{ key, to }]
+ * }
  */
-function drawTanks(svgEl, overlayEl, view) {
+function drawFlow(root, view) {
   const reduced = prefersReducedMotion();
-  const mini = Boolean(view.mini);
-  const slots = view.sites.length + (view.queue ? 1 : 0);
-  const labels = mini && slots <= 5;
-  // Geometry is measured per render: on a wide, short card the slots and tanks grow to use
-  // the width instead of bunching in the middle. Labels live in an HTML row below the art.
-  const G = { PAD: 24, TOP: mini ? 116 : 104, TH: 210, SLOT: 90, TW: 50 };
-  const LABEL_H = 46;
-  const fit = mini ? null : svgEl.closest(".tankFit");
-  if (fit) {
-    const r = fit.getBoundingClientRect();
-    if (r.width > 0 && r.height > 0) {
-      const artH = G.TOP + G.TH + 22;
-      const ar = r.width / Math.max(r.height - LABEL_H, 120);
-      G.SLOT = 2 * Math.round(Math.max(88, Math.min(150, (ar * artH - 2 * G.PAD) / Math.max(slots, 1))) / 2);
-      G.TW = Math.round(Math.max(46, Math.min(64, G.SLOT * 0.46)));
-    }
-  }
-  const H = mini ? (labels ? 392 : 352) : G.TOP + G.TH + 22;
-  const W = G.PAD * 2 + Math.max(slots, 1) * G.SLOT;
-  const base = G.TOP + G.TH;
-  const xOf = (i) => G.PAD + G.SLOT * i + G.SLOT / 2;
-  const off = view.queue ? 1 : 0;
-  const indexOf = (k) => (k === "queue" ? 0 : off + view.sites.findIndex((s) => s.key === k));
-  const scaleMax = view.scaleMax || 1;
-  const inner = G.TH - 6;
-  const levelY = (v) => base - 3 - Math.max(0, Math.min(1, v / scaleMax)) * inner;
-  const pre = svgEl.id || "tanks";
-
-  // ---- (re)build static structure when the slot layout changes ----
-  const sig = `${mini}|${G.SLOT}|${G.TW}|${view.queue ? 1 : 0}|${view.sites.map((s) => s.key).join(",")}`;
-  let L = svgEl._tk;
-  if (!L || L.sig !== sig) {
-    svgEl.replaceChildren();
-    svgEl.setAttribute("viewBox", `0 0 ${W} ${H}`);
-    const box = svgEl.closest(".tankBox") || svgEl.parentElement;
-    if (box) box.style.setProperty("--ar", (W / H).toFixed(4));
-    const defs = svg("defs", null, [
-      svg("linearGradient", { id: `${pre}-water`, x1: 0, y1: 0, x2: 0, y2: 1 }, [svg("stop", { offset: "0%", "stop-color": "#F2FFFD" }), svg("stop", { offset: "100%", "stop-color": "#9EDFD8" })]),
-      svg("linearGradient", { id: `${pre}-hot`, x1: 0, y1: 0, x2: 0, y2: 1 }, [svg("stop", { offset: "0%", "stop-color": "#FFF1E6" }), svg("stop", { offset: "100%", "stop-color": "#F4AE80" })]),
-      svg("linearGradient", { id: `${pre}-sweep`, x1: 0, y1: 0, x2: 1, y2: 0 }, [svg("stop", { offset: "0%", "stop-color": "#FFFFFF", "stop-opacity": "0" }), svg("stop", { offset: "50%", "stop-color": "#FFFFFF", "stop-opacity": ".22" }), svg("stop", { offset: "100%", "stop-color": "#FFFFFF", "stop-opacity": "0" })]),
-    ]);
-    svgEl.appendChild(defs);
-    const tanksG = svg("g");
-    const arcsG = svg("g");
+  const n = view.sites.length;
+  const mode = flowMode(root.clientWidth || 800, n, view.prefer);
+  const sig = `${mode}|${view.meter ? 1 : 0}|${view.sites.map((s) => `${s.key}${s.onClick ? "*" : ""}`).join(",")}`;
+  let F = root._fl;
+  if (!F || F.sig !== sig) {
+    if (F && F.ro) F.ro.disconnect();
+    root.replaceChildren();
+    root.classList.remove("flow--one", "flow--two", "flow--stack");
+    root.classList.add("flow", `flow--${mode}`);
+    const svgEl = svg("svg", { class: "flowSvg", "aria-hidden": "true" });
+    const edgesG = svg("g");
+    const portsG = svg("g");
     const fxG = svg("g");
-    const sweep = svg("rect", { x: -80, y: G.TOP - 8, width: 80, height: G.TH + 16, fill: `url(#${pre}-sweep)`, class: "tankSweep", style: `--sw:${W + 160}px` });
-    svgEl.append(tanksG, sweep, arcsG, fxG);
+    svgEl.append(edgesG, portsG, fxG);
 
-    const tanks = new Map();
-    view.sites.forEach((s, si) => {
-      const i = off + si;
-      const x0 = xOf(i) - G.TW / 2;
-      const clipId = `${pre}-clip-${i}`;
-      defs.appendChild(svg("clipPath", { id: clipId }, [svg("rect", { x: x0 + 3, y: G.TOP + 3, width: G.TW - 6, height: G.TH - 6, rx: 8 })]));
-      const A = 3;
-      let wave = `M ${x0 - G.TW} 0`;
-      for (let k = 0; k < 3; k++) wave += ` q ${G.TW / 4} ${-A} ${G.TW / 2} 0 q ${G.TW / 4} ${A} ${G.TW / 2} 0`;
-      wave += ` V ${G.TH + 10} H ${x0 - G.TW} Z`;
-      const wavePath = svg("path", { d: wave, class: "wave", style: `--wl:${G.TW}` });
-      const levelG = svg("g", { class: "levelG", style: `transform:translateY(${base}px)` }, [wavePath]);
-      const g = svg("g", null, [
-        svg("rect", { x: x0, y: G.TOP, width: G.TW, height: G.TH, rx: 12, fill: "rgba(255,255,255,.07)" }),
-        svg("g", { "clip-path": `url(#${clipId})` }, [levelG]),
-        svg("rect", { x: x0 + 7, y: G.TOP + 12, width: 3, height: G.TH - 24, rx: 1.5, fill: "#FFFFFF", opacity: ".16" }),
-      ]);
-      const ghost = svg("line", { x1: x0 + 4, x2: x0 + G.TW - 4, stroke: "#D9FBF8", "stroke-width": 2, "stroke-dasharray": "4 3", class: "lineT" });
-      const cap = svg("line", { x1: x0 - 6, x2: x0 + G.TW + 6, stroke: "#FFB37A", "stroke-width": 1.6, class: "lineT" });
-      const outline = svg("rect", { x: x0, y: G.TOP, width: G.TW, height: G.TH, rx: 12, fill: "none" });
-      const pulse = svg("rect", { x: x0 - 3, y: G.TOP - 3, width: G.TW + 6, height: G.TH + 6, rx: 14, fill: "none", stroke: "#FFB37A", "stroke-width": 2, class: "pulseT" });
-      const mark = svg("text", { x: x0 + G.TW / 2, y: G.TOP + 18, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: "#FFB37A", text: "▲" });
-      const gpuTrack = svg("rect", { x: x0, y: base + 10, width: G.TW, height: 5, rx: 2.5, fill: "rgba(255,255,255,.2)" });
-      const gpuFill = svg("rect", { x: x0, y: base + 10, width: 0, height: 5, rx: 2.5, fill: "#FFFFFF", class: "gpuFill" });
-      g.append(ghost, cap, outline, pulse, mark, gpuTrack, gpuFill);
-      let label = null;
-      if (labels) {
-        label = svg("text", { x: xOf(i), y: base + 46, "text-anchor": "middle", "font-size": 21, "font-weight": 600, fill: "#FFFFFF" });
-        g.appendChild(label);
+    const hubTitle = el("span", { className: "fHubTitle" });
+    const hubSub = el("span", { className: "fHubSub" });
+    const hubIcon = el("span", { className: "fHubIcon" }, [iconSvg(ICON_LAYERS, 22)]);
+    const hubCount = el("span", { className: "fHubCount mono" });
+    const hub = el("div", { className: "fHub", role: "group" }, [hubIcon, el("span", { className: "fHubText" }, [hubTitle, hubSub]), hubCount]);
+
+    const colA = el("div", { className: "fCol fColA", role: "list" });
+    const colB = mode === "two" ? el("div", { className: "fCol fColB", role: "list" }) : null;
+    const chipsEl = el("div", { className: "fChips", "aria-hidden": "true" });
+    root.append(svgEl, hub, colA);
+    if (colB) root.append(colB);
+    root.append(chipsEl);
+
+    const split = mode === "two" ? Math.ceil(n / 2) : n;
+    const nodes = new Map();
+    view.sites.forEach((s, i) => {
+      const side = i < split ? "A" : "B";
+      const water = el("span", { className: "fWater" });
+      const capLine = el("span", { className: "fTankCap" });
+      const tank = el("span", { className: "fTank", "aria-hidden": "true" }, [water, capLine]);
+      const name = el("span", { className: "fName" });
+      const fig = el("span", { className: "fFig mono" });
+      const sub = el("span", { className: "fSub" });
+      const body = [el("span", { className: "fTop" }, [name, fig])];
+      let meter = null;
+      if (view.meter) {
+        meter = {
+          fill: el("span", { className: "fMeterFill" }),
+          cap: el("span", { className: "fMeterCap" }),
+          ghost: el("span", { className: "fMeterGhost" }),
+        };
+        body.push(el("span", { className: "fMeter", "aria-hidden": "true" }, [meter.fill, meter.ghost, meter.cap]));
       }
-      tanksG.appendChild(g);
-      tanks.set(s.key, { g, x0, levelG, wavePath, ghost, cap, outline, pulse, mark, gpuFill, label, landKey: "" });
+      body.push(sub);
+      const node = s.onClick
+        ? el("button", { type: "button", className: "fNode" }, [tank, el("span", { className: "fBody" }, body)])
+        : el("div", { className: "fNode", role: "listitem" }, [tank, el("span", { className: "fBody" }, body)]);
+      if (s.onClick) node.addEventListener("click", () => node._onClick && node._onClick());
+      const wrap = s.onClick ? el("div", { role: "listitem", className: "fItem" }, [node]) : node;
+      (side === "A" ? colA : colB).appendChild(wrap);
+
+      const base = svg("path", { class: "eBase" });
+      const flow = svg("path", { class: "eFlow", pathLength: 100 });
+      const g = svg("g", { class: "fEdge" }, [base, flow]);
+      edgesG.appendChild(g);
+      const end = svg("circle", { r: 3.5, class: "ePort" });
+      portsG.appendChild(end);
+      nodes.set(s.key, { node, side, water, capLine, name, fig, sub, meter, g, base, flow, end, landKey: "" });
     });
+    const hubPorts = [svg("circle", { r: 5, class: "eHubPort" }), svg("circle", { r: 5, class: "eHubPort" })];
+    portsG.append(...hubPorts);
 
-    let queue = null;
-    if (view.queue) {
-      const x0 = xOf(0) - G.TW / 2;
-      const qTop = G.TOP + G.TH * 0.5;
-      const dots = svg("g");
-      const g = svg("g", null, [
-        svg("rect", { x: x0, y: qTop, width: G.TW, height: base - qTop, rx: 12, fill: "rgba(255,255,255,.05)", stroke: "rgba(255,255,255,.6)", "stroke-width": 1.5, "stroke-dasharray": "5 4" }),
-        dots,
-      ]);
-      const more = svg("text", { x: xOf(0), y: qTop - 8, "text-anchor": "middle", "font-size": 13, "font-weight": 600, fill: "#FFFFFF" });
-      g.appendChild(more);
-      if (labels) g.appendChild(svg("text", { x: xOf(0), y: base + 46, "text-anchor": "middle", "font-size": 21, "font-weight": 600, fill: "#FFFFFF", opacity: ".85", text: "Queue" }));
-      tanksG.appendChild(g);
-      queue = { dots, more, x0 };
+    F = root._fl = { sig, mode, svg: svgEl, fxG, hub, hubIcon, hubTitle, hubSub, hubCount, chipsEl, nodes, hubPorts, paths: new Map(), drops: new Set(), falls: new Set(), lastCount: null };
+    if ("ResizeObserver" in window) {
+      let w0 = root.clientWidth;
+      F.ro = new ResizeObserver(() => {
+        if (root.clientWidth === w0 && F.paths.size) return flowGeometry(root);
+        w0 = root.clientWidth;
+        if (flowMode(w0, n, F.view.prefer) !== F.mode) drawFlow(root, F.view);
+        else flowGeometry(root);
+      });
+      F.ro.observe(root);
     }
+  }
+  F.view = view;
 
-    let chipsEl = null;
-    let btnsEl = null;
-    if (overlayEl) {
-      overlayEl.replaceChildren();
-      chipsEl = el("div");
-      btnsEl = el("div");
-      overlayEl.append(btnsEl, chipsEl);
+  // ---- hub ----
+  const h = view.hub || {};
+  F.hubTitle.textContent = h.title || "Queue";
+  F.hubSub.textContent = h.sub || "";
+  const count = h.count ?? 0;
+  F.hubCount.textContent = String(count);
+  F.hubCount.hidden = !count;
+  if (F.lastCount != null && count !== F.lastCount && !reduced) {
+    F.hubCount.classList.remove("bump");
+    void F.hubCount.offsetWidth;
+    F.hubCount.classList.add("bump");
+  }
+  F.lastCount = count;
+  F.hub.setAttribute("aria-label", h.aria || `${h.title || "Queue"}: ${h.sub || ""}`);
+  F.hub.classList.toggle("isBusy", Boolean(view.loading));
+
+  // ---- site cards ----
+  const routeTo = new Map();
+  for (const r of view.routes || []) if (!routeTo.has(r.to)) routeTo.set(r.to, r);
+  for (const s of view.sites) {
+    const N = F.nodes.get(s.key);
+    const scale = Math.max(s.w || 0, s.c || 0, s.ghost || 0, 1) / 0.82;
+    const frac = (v) => `${(Math.max(0, Math.min(1, v / scale)) * 100).toFixed(1)}%`;
+    N.water.style.height = frac(s.w || 0);
+    N.capLine.style.bottom = s.c != null ? frac(s.c) : "";
+    N.capLine.hidden = s.c == null;
+    if (N.meter) {
+      N.meter.fill.style.width = frac(s.w || 0);
+      N.meter.cap.hidden = s.c == null;
+      if (s.c != null) N.meter.cap.style.left = frac(s.c);
+      const showGhost = s.ghost != null && Math.abs(s.ghost - s.w) > 0.5;
+      N.meter.ghost.hidden = !showGhost;
+      if (showGhost) N.meter.ghost.style.left = frac(s.ghost);
     }
-    L = svgEl._tk = { sig, tanks, queue, arcsG, fxG, sweep, chipsEl, btnsEl, falls: new Set(), drops: new Set() };
+    N.name.textContent = s.name;
+    N.name.title = s.name;
+    N.fig.textContent = s.fig || "";
+    N.fig.className = `fFig mono${s.figTone ? ` is${s.figTone[0].toUpperCase()}${s.figTone.slice(1)}` : ""}`;
+    N.sub.textContent = s.sub || "";
+    N.sub.hidden = !s.sub;
+    N.node.classList.toggle("isOver", Boolean(s.over));
+    N.node.classList.toggle("isSel", Boolean(s.selected));
+    N.node.classList.toggle("isHi", Boolean(s.highlight));
+    if (s.onClick) {
+      N.node._onClick = s.onClick;
+      N.node.setAttribute("aria-pressed", s.selected ? "true" : "false");
+    }
+    if (s.aria) N.node.setAttribute("aria-label", s.aria);
+    // land ripple once per key
+    if (s.land && s.land !== N.landKey && !reduced) {
+      N.node.classList.remove("isLand");
+      void N.node.offsetWidth;
+      N.node.classList.add("isLand");
+      setTimeout(() => N.node.classList.remove("isLand"), 3600);
+    }
+    N.landKey = s.land || "";
+
+    // edge styling
+    const r = routeTo.get(s.key);
+    const cls = ["fEdge"];
+    if (s.active) cls.push("isActive");
+    if (s.over) cls.push("isOver");
+    if (s.selected || s.highlight) cls.push("isHi");
+    if (r) cls.push(`is${r.kind[0].toUpperCase()}${r.kind.slice(1)}`);
+    if (r && r.stale) cls.push("isStale");
+    if (view.loading) cls.push("isScan");
+    if (reduced) cls.push("isStill");
+    N.g.setAttribute("class", cls.join(" "));
+    N.g.style.setProperty("--ew", (1.6 + 3.2 * Math.max(0, Math.min(1, s.weight || 0))).toFixed(2));
+    N.end.setAttribute("class", `ePort${r ? ` is${r.kind[0].toUpperCase()}${r.kind.slice(1)}` : s.active ? " isActive" : ""}${s.over ? " isOver" : ""}`);
   }
 
-  L.sweep.style.display = view.loading && !reduced ? "" : "none";
-
-  // ---- tanks ----
-  view.sites.forEach((s, si) => {
-    const T = L.tanks.get(s.key);
-    const i = off + si;
-    const hot = s.over;
-    T.wavePath.setAttribute("fill", `url(#${pre}-${hot ? "hot" : "water"})`);
-    const ly = levelY(s.w);
-    requestAnimationFrame(() => (T.levelG.style.transform = `translateY(${ly.toFixed(1)}px)`));
-    T.wavePath.classList.toggle("wave", !reduced);
-    if (s.c != null) {
-      const cy = levelY(s.c).toFixed(1);
-      setAttrs(T.cap, { y1: cy, y2: cy });
-      T.cap.style.opacity = "1";
-    } else T.cap.style.opacity = "0";
-    if (s.ghostW != null && Math.abs(s.ghostW - s.w) > 0.5) {
-      const gy = levelY(s.ghostW).toFixed(1);
-      // dark dashes when the proposed level sits inside the water, light ones above it
-      setAttrs(T.ghost, { y1: gy, y2: gy, stroke: s.ghostW < s.w ? "#0B4F58" : "#D9FBF8" });
-      T.ghost.style.opacity = "1";
-    } else T.ghost.style.opacity = "0";
-    const stroke = s.selected || s.highlight ? "#FFFFFF" : hot ? "#FFB37A" : "rgba(255,255,255,.5)";
-    setAttrs(T.outline, { stroke, "stroke-width": s.selected || s.highlight ? 2.6 : 1.5 });
-    T.pulse.style.display = (hot || s.highlight) && !view.loading ? "" : "none";
-    T.pulse.setAttribute("stroke", hot ? "#FFB37A" : "#FFFFFF");
-    T.mark.style.display = hot ? "" : "none";
-    T.gpuFill.setAttribute("width", ((Math.min(s.u, 100) / 100) * G.TW).toFixed(1));
-    T.gpuFill.setAttribute("fill", hot ? "#FFB37A" : "#FFFFFF");
-    if (T.label) {
-      T.label.textContent = s.short;
-      T.label.setAttribute("font-size", 21);
-      const maxW = G.SLOT - 10;
-      const w = T.label.getComputedTextLength ? T.label.getComputedTextLength() : 0;
-      if (w > maxW) T.label.setAttribute("font-size", Math.max(11, Math.floor((21 * maxW) / w)));
-      T.label.setAttribute("opacity", s.highlight ? "1" : ".75");
-    }
-    // landing ripple at the water surface, once per apply
-    if (s.land && s.land !== T.landKey && !reduced) {
-      const rip = svg("ellipse", { cx: xOf(i), cy: ly.toFixed(1), rx: G.TW / 2 - 4, ry: 4, fill: "none", stroke: "#FFFFFF", "stroke-width": 2, class: "land" });
-      T.g.appendChild(rip);
-      setTimeout(() => rip.remove(), 3400);
-    }
-    T.landKey = s.land || "";
-  });
-
-  // ---- queue well: one droplet per queued job ----
-  if (L.queue) {
-    const q = L.queue;
-    const n = Math.max(0, view.queue.count || 0);
-    const shown = Math.min(n, 9);
-    q.dots.replaceChildren();
-    for (let k = 0; k < shown; k++) {
-      const col = k % 3;
-      const row = Math.floor(k / 3);
-      q.dots.appendChild(svg("path", { d: dropPath(q.x0 + 12 + col * 13, base - 12 - row * 16, 0.62), fill: "#FFFFFF", opacity: ".9" }));
-    }
-    q.more.textContent = n ? String(n) : "";
-  }
-
-  // ---- arcs over the tops ----
-  const arcGeom = (a) => {
-    const ia = indexOf(a.from);
-    let ib = a.to != null ? indexOf(a.to) : -1;
-    const xa = xOf(ia < 0 ? 0 : ia);
-    let xb;
-    if (ib < 0) xb = xa + (ia >= slots - 2 ? -2 : 2) * G.SLOT; // infeasible: aim at nowhere
-    else xb = xOf(ib);
-    const ya = G.TOP - 6;
-    const peak = Math.min(G.TOP - 30, 24 + Math.abs(xb - xa) * 0.2); // apex stays clear of the card header
-    const cx = (xa + xb) / 2;
-    return { d: `M ${xa.toFixed(1)} ${ya} Q ${cx.toFixed(1)} ${(ya - 2 * peak).toFixed(1)} ${xb.toFixed(1)} ${ya}`, apex: [cx, ya - peak] };
-  };
-  const geo = new Map();
+  // ---- chips ----
   const keep = new Set();
-  for (const a of view.arcs) {
-    const g = arcGeom(a);
-    geo.set(a.key, g);
-    keep.add(a.key);
-    const p = keyedChild(L.arcsG, a.key, () => svg("path", { fill: "none", "stroke-linecap": "round", pathLength: 1 }));
-    const style = {
-      proposed: { stroke: "#D9FBF8", w: a.focus ? 3.5 : 2.2, dash: "0.03 0.025", cls: a.stale || reduced ? "" : "dashflow", op: a.stale ? 0.4 : 1 },
-      applied: { stroke: "#FFFFFF", w: 2.4, dash: "1 0", cls: "", op: 0.95 },
-      infeasible: { stroke: "#FFB37A", w: 2.6, dash: "0.45 1", cls: "", op: 1 },
-    }[a.kind];
-    setAttrs(p, { d: g.d, stroke: style.stroke, "stroke-width": style.w, class: `arcPath ${style.cls}`.trim() });
-    p.style.strokeDasharray = style.dash;
-    p.style.opacity = String(style.op);
+  for (const r of view.routes || []) {
+    if (!r.text || !F.nodes.has(r.to)) continue;
+    const key = `${r.key}|${r.text}`;
+    keep.add(key);
+    const chip = keyedChild(F.chipsEl, key, () => el("div", { className: "fChip pop", text: r.text }));
+    chip.className = `fChip is${r.kind[0].toUpperCase()}${r.kind.slice(1)}${r.stale ? " isStale" : ""}`;
+    chip.dataset.to = r.to;
   }
-  pruneKeyed(L.arcsG, keep);
+  pruneKeyed(F.chipsEl, keep);
 
-  // ---- droplet travelling an applied arc (once per key) ----
-  if (!reduced) {
-    for (const d of view.drops || []) {
-      const g = geo.get(d.arc);
-      if (!g || L.drops.has(d.key)) continue;
-      L.drops.add(d.key);
-      const drop = svg("circle", { r: 7, fill: "#FFFFFF", class: "drop", style: `offset-path:path('${g.d}');offset-rotate:0deg;filter:drop-shadow(0 0 6px rgba(255,255,255,.9))` });
-      L.fxG.appendChild(drop);
-      setTimeout(() => drop.remove(), 2300);
+  flowGeometry(root);
+
+  // ---- motion: a droplet falls into the queue; droplets run along a route ----
+  if (reduced) return;
+  const runDrop = (to, key) => {
+    const P = F.paths.get(to);
+    if (!P) return;
+    const dot = svg("circle", { r: 6, class: "fDrop", style: `offset-path:path('${P.d}');offset-rotate:0deg` });
+    F.fxG.appendChild(dot);
+    setTimeout(() => dot.remove(), 2200);
+    const N = F.nodes.get(to);
+    if (N) {
+      setTimeout(() => {
+        N.node.classList.remove("isLand");
+        void N.node.offsetWidth;
+        N.node.classList.add("isLand");
+        setTimeout(() => N.node.classList.remove("isLand"), 3600);
+      }, 300);
     }
-    // ---- a new job falls into its tank, or into the queue ----
-    for (const f of view.falls || []) {
-      if (L.falls.has(f.key)) continue;
-      const i = indexOf(f.to);
-      if (i < 0) continue;
-      L.falls.add(f.key);
-      const site = view.sites.find((s) => s.key === f.to);
-      const sy = f.to === "queue" ? base - 14 - Math.floor(Math.min(view.queue?.count || 1, 9) / 3) * 16 : levelY(site ? site.w : 0);
-      const grp = svg("g", { transform: `translate(${xOf(i).toFixed(1)} ${sy.toFixed(1)})` }, [
-        svg("path", { d: dropPath(0, -6, 1.15), fill: "#FFFFFF", class: "fallDrop", style: `--fy:${(sy + 10).toFixed(0)};filter:drop-shadow(0 0 6px rgba(255,255,255,.9))` }),
-        svg("ellipse", { cx: 0, cy: 0, rx: G.TW / 2 - 4, ry: 4, fill: "none", stroke: "#FFFFFF", "stroke-width": 2, class: "splash" }),
-      ]);
-      L.fxG.appendChild(grp);
-      setTimeout(() => grp.remove(), 2600);
-    }
-  }
-
-  // ---- HTML overlay: chips at arc apexes, accessible tank buttons with labels ----
-  if (!L.chipsEl) return;
-  const chipKeep = new Set();
-  for (const c of view.chips || []) {
-    const g = geo.get(c.arc);
-    if (!g) continue;
-    const key = `${c.key}|${c.text}`;
-    chipKeep.add(key);
-    const pos = keyedChild(L.chipsEl, key, () => el("div", { className: "arcChipPos" }, [el("div", { className: "arcChip pop", text: c.text })]));
-    pos.style.left = `${((g.apex[0] / W) * 100).toFixed(2)}%`;
-    pos.style.top = `${(((g.apex[1] - 2) / H) * 100).toFixed(2)}%`;
-    const inner = pos.firstChild;
-    inner.style.background = c.bg;
-    inner.style.color = c.fg;
-    inner.style.border = `1.5px ${c.bstyle} ${c.bc}`;
-  }
-  pruneKeyed(L.chipsEl, chipKeep);
-
-  const btnKeep = new Set();
-  const place = (node, i) => {
-    node.style.left = `${(((xOf(i) - G.SLOT / 2) / W) * 100).toFixed(3)}%`;
-    node.style.width = `${((G.SLOT / W) * 100).toFixed(3)}%`;
-    node.style.top = `${(((G.TOP - 10) / H) * 100).toFixed(3)}%`;
-    node.style.height = `${(((H - G.TOP + 10) / H) * 100).toFixed(3)}%`;
   };
-  view.sites.forEach((s, si) => {
-    btnKeep.add(s.key);
-    const b = keyedChild(L.btnsEl, s.key, () => {
-      const node = el("button", { type: "button", className: "tankBtn" });
-      node.addEventListener("click", () => node._onClick && node._onClick());
-      return node;
-    });
-    place(b, off + si);
-    b._onClick = s.onClick;
-    b.setAttribute("aria-label", s.aria);
-    b.setAttribute("aria-pressed", s.selected ? "true" : "false");
-  });
-  pruneKeyed(L.btnsEl, btnKeep);
+  for (const d of view.drops || []) {
+    if (F.drops.has(d.key)) continue;
+    F.drops.add(d.key);
+    runDrop(d.to, d.key);
+  }
+  for (const f of view.falls || []) {
+    if (F.falls.has(f.key)) continue;
+    F.falls.add(f.key);
+    const drip = el("span", { className: "fFall", "aria-hidden": "true" }, [
+      svg("svg", { width: 16, height: 20, viewBox: "-8 -11 16 20" }, [svg("path", { d: dropPath(0, 0, 1), fill: "currentColor" })]),
+    ]);
+    F.hubIcon.appendChild(drip);
+    F.hubIcon.classList.remove("isSplash");
+    void F.hubIcon.offsetWidth;
+    F.hubIcon.classList.add("isSplash");
+    setTimeout(() => {
+      drip.remove();
+      F.hubIcon.classList.remove("isSplash");
+    }, 1900);
+    if (f.to && f.to !== "queue") setTimeout(() => runDrop(f.to, f.key), 950);
+  }
+}
 
-  // ---- label row: one cell per slot, aligned under each tank, never on the glass ----
-  const row = svgEl.closest(".tankBox")?.querySelector(".tankLabels");
-  if (row) {
-    row.style.gridTemplateColumns = `repeat(${Math.max(slots, 1)}, minmax(0, 1fr))`;
-    row.style.paddingInline = `${((G.PAD / W) * 100).toFixed(3)}%`;
-    const cell = (name, figure, cls, onClick) => {
-      const c = el("div", { className: `tankCell ${cls}`.trim(), "aria-hidden": "true" }, [
-        el("span", { className: "tankName", text: name }),
-        el("span", { className: "tankFig", text: figure }),
-      ]);
-      if (onClick) c.addEventListener("click", onClick);
-      return c;
-    };
-    const cells = [];
-    if (view.queue) {
-      const n = view.queue.count || 0;
-      cells.push(cell("Queue", n ? `${n} waiting` : "empty", "isQueue", null));
+/** Measure the cards and draw every route; also called on resize. */
+function flowGeometry(root) {
+  const F = root._fl;
+  if (!F) return;
+  const R = root.getBoundingClientRect();
+  if (!R.width || !R.height) return;
+  const rel = (e) => {
+    const r = e.getBoundingClientRect();
+    return { l: r.left - R.left, r: r.right - R.left, t: r.top - R.top, b: r.bottom - R.top, cy: (r.top + r.bottom) / 2 - R.top };
+  };
+  F.svg.setAttribute("viewBox", `0 0 ${R.width.toFixed(1)} ${R.height.toFixed(1)}`);
+  const H = rel(F.hub);
+  const f1 = (v) => v.toFixed(1);
+  const used = { A: false, B: false };
+  for (const [key, N] of F.nodes) {
+    const nd = rel(N.node);
+    let d;
+    let chip;
+    let q;
+    if (F.mode === "stack") {
+      const x0 = H.l + 26;
+      const y0 = H.b;
+      q = [nd.l, nd.cy];
+      d = `M ${f1(x0)} ${f1(y0)} V ${f1(q[1] - 12)} Q ${f1(x0)} ${f1(q[1])} ${f1(x0 + 12)} ${f1(q[1])} H ${f1(q[0])}`;
+      chip = [nd.r - 6, nd.t];
+    } else {
+      const left = F.mode === "two" && N.side === "A";
+      used[left ? "A" : "B"] = true;
+      const p = left ? [H.l, H.cy] : [H.r, H.cy];
+      q = left ? [nd.r, nd.cy] : [nd.l, nd.cy];
+      const dx = (q[0] - p[0]) * 0.55;
+      const c1 = [p[0] + dx, p[1]];
+      const c2 = [q[0] - dx, q[1]];
+      d = `M ${f1(p[0])} ${f1(p[1])} C ${f1(c1[0])} ${f1(c1[1])} ${f1(c2[0])} ${f1(c2[1])} ${f1(q[0])} ${f1(q[1])}`;
+      chip = cubicAt(p, c1, c2, q, 0.6);
     }
-    for (const s of view.sites) cells.push(cell(s.short, s.fig || s.sub, `${s.over ? "isOver" : ""} ${s.selected ? "isSel" : ""}`, s.onClick));
-    row.replaceChildren(...cells);
+    N.base.setAttribute("d", d);
+    N.flow.setAttribute("d", d);
+    setAttrs(N.end, { cx: f1(q[0]), cy: f1(q[1]) });
+    F.paths.set(key, { d, chip });
+  }
+  const [pa, pb] = F.hubPorts;
+  if (F.mode === "stack") {
+    setAttrs(pa, { cx: f1(H.l + 26), cy: f1(H.b) });
+    pb.style.display = "none";
+  } else if (F.mode === "two") {
+    setAttrs(pa, { cx: f1(H.l), cy: f1(H.cy) });
+    setAttrs(pb, { cx: f1(H.r), cy: f1(H.cy) });
+    pa.style.display = used.A ? "" : "none";
+    pb.style.display = used.B ? "" : "none";
+  } else {
+    setAttrs(pa, { cx: f1(H.r), cy: f1(H.cy) });
+    pb.style.display = "none";
+  }
+  // chips: place on their route, then nudge apart any that collide
+  const chips = Array.from(F.chipsEl.children).map((c) => ({ c, P: F.paths.get(c.dataset.to) })).filter((x) => x.P);
+  const boxes = [];
+  for (const { c, P } of chips) {
+    let [x, y] = P.chip;
+    const w = c.offsetWidth || 90;
+    const hgt = c.offsetHeight || 22;
+    if (F.mode === "stack") x -= w + 4; // right-aligned inside the card corner
+    for (let k = 0; k < 6; k++) {
+      const hit = boxes.find((b) => Math.abs(b.x - x) < (b.w + w) / 2 + 4 && Math.abs(b.y - y) < (b.h + hgt) / 2 + 2);
+      if (!hit) break;
+      y = hit.y + (y >= hit.y ? 1 : -1) * ((hit.h + hgt) / 2 + 3);
+    }
+    boxes.push({ x, y, w, h: hgt });
+    c.style.left = `${f1(x)}px`;
+    c.style.top = `${f1(y)}px`;
   }
 }
 
