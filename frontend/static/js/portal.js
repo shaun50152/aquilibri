@@ -42,6 +42,10 @@ const pendingFalls = []; // a just-submitted job drops into its tank, or the que
 const placements = []; // queued jobs the scheduler just placed: hop from the queue well
 let submitting = false;
 const obs = new Map(); // job id -> what this browser has observed
+let grokSummary = "";
+let isGrokLoading = false;
+let grokJobId = null;
+let grokError = null;
 
 /* ---------- helpers ---------- */
 function siteById(id) {
@@ -414,9 +418,33 @@ function renderDetail() {
   const icon = $("d-icon");
   icon.className = `dIcon is${status[0].toUpperCase()}${status.slice(1)}`;
 
-  // result
+  // Grok executive summary (above download) — same .result card chrome as the CSV panel.
+  const grokPanel = $("d-grok");
+  const showResult = status === "completed" || !!job.result_url;
+  if (grokPanel) {
+    const showGrok = status === "completed";
+    grokPanel.hidden = !showGrok;
+    if (showGrok) {
+      if (isGrokLoading && grokJobId === job.id) {
+        $("d-grok-title").textContent = "Generating summary…";
+        $("d-grok-text").textContent = "Asking Grok for a two-sentence ops brief.";
+      } else if (grokJobId === job.id && grokSummary) {
+        $("d-grok-title").textContent = "Ready before download";
+        $("d-grok-text").textContent = grokSummary;
+      } else if (grokJobId === job.id && grokError) {
+        $("d-grok-title").textContent = "Summary unavailable";
+        $("d-grok-text").textContent = grokError;
+      } else {
+        $("d-grok-title").textContent = "xAI ops brief";
+        $("d-grok-text").textContent = "Preparing executive summary…";
+        loadGrokSummary(job.id);
+      }
+    }
+  }
+
+  // result / download
   const result = $("d-result");
-  result.hidden = !(status === "completed" || job.result_url);
+  result.hidden = !showResult;
   if (!result.hidden) {
     let fileName = `${shortJobId(job.id).toLowerCase()}-sample-result.csv`;
     if (job.result_url && !job.result_url.startsWith("data:")) {
@@ -431,6 +459,37 @@ function renderDetail() {
     } else {
       slot.replaceChildren(el("button", { type: "button", className: "btn btnP", disabled: true, text: "Sample result not ready." }));
     }
+  }
+}
+
+async function loadGrokSummary(jobId) {
+  if (DEMO) {
+    grokJobId = jobId;
+    isGrokLoading = false;
+    grokError = null;
+    grokSummary =
+      "Simulated workload finished on schedule within site water limits. " +
+      "Open the sample result below for the CSV artifact from this visual demo.";
+    if (selectedJobId === jobId) renderDetail();
+    return;
+  }
+  if (isGrokLoading && grokJobId === jobId) return;
+  grokJobId = jobId;
+  isGrokLoading = true;
+  grokSummary = "";
+  grokError = null;
+  if (selectedJobId === jobId) renderDetail();
+  try {
+    const body = await getJobSummary(jobId);
+    if (grokJobId !== jobId) return;
+    grokSummary = body.summary || "";
+    if (!grokSummary) grokError = "Grok returned an empty summary.";
+  } catch (err) {
+    if (grokJobId !== jobId) return;
+    grokError = err.message || "Could not load Grok summary.";
+  } finally {
+    if (grokJobId === jobId) isGrokLoading = false;
+    if (selectedJobId === jobId) renderDetail();
   }
 }
 

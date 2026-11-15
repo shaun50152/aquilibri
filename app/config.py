@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     use_tiger_site_profiles: bool = True
     gemini_api_key: str = ""
     gemini_model: str = "gemini-1.5-flash"
+    # xAI / Grok (job completion executive summaries only)
+    grok_api_key: str = ""
+    grok_model: str = "grok-3-mini"
+    grok_base_url: str = "https://api.x.ai/v1"
 
     @field_validator("data_mode", mode="before")
     @classmethod

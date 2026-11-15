@@ -27,6 +27,22 @@ All timestamps are **timezone-aware UTC** (ISO-8601 with offset or `Z`). Fronten
 }
 ```
 
+### `GET /api/jobs/{job_id}/summary`
+
+xAI Grok executive summary for a **completed** job. Returns two sentences of ops copy for the portal panel above the sample-result download.
+
+```json
+{
+  "job_id": "job-hackuta-0001",
+  "summary": "…",
+  "model": "grok-3-mini",
+  "provider": "xai",
+  "metrics": { "site_name": "US-East-1 (Ashburn, VA)", "water_liters": 208.0, "cost_usd": 0.4 }
+}
+```
+
+Errors: `404` if the job is missing or not completed; `503` if `GROK_API_KEY` is missing or the xAI call fails. Does not modify Gemini or Tiger paths.
+
 ### `POST /api/jobs` → `201`
 
 Request:

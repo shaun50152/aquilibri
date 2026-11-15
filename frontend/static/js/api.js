@@ -111,6 +111,9 @@ function advanceDemo(body = {}) {
 function getNotifications() {
   return apiRequest("/api/notifications");
 }
+function getJobSummary(jobId) {
+  return apiRequest(`/api/jobs/${encodeURIComponent(jobId)}/summary`);
+}
 
 function formatUtc(isoString) {
   if (!isoString) return "—";
