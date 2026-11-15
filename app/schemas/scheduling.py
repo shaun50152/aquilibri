@@ -107,6 +107,7 @@ class MetricsSourceLabel(str, Enum):
     """Identifies what metrics_before / comparison schedules represent."""
 
     computed_reference_schedule = "computed_reference_schedule"
+    saved_schedule_under_restriction = "saved_schedule_under_restriction"
     unavailable = "unavailable"
 
 

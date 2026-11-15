@@ -291,6 +291,29 @@ def test_emergency_limit_only_requested_site_and_window():
     )
 
 
+def test_emergency_before_is_saved_schedule_not_proposal():
+    snap = _snapshot()
+    saved = next(j for j in snap.jobs if j.id == "job-hackuta-0001")
+    req = ReallocationPreviewRequest(
+        mode=ReallocationMode.emergency,
+        emergency_restriction=EmergencyRestriction(
+            site_id=saved.assigned_site_id,
+            water_cap_liters_per_hour=0.0,
+            start=NOW,
+            end=NOW + timedelta(hours=18),
+        ),
+    )
+    resp = scheduling_service._compute_preview(req, snap, persist=False)
+    assert resp.status == PreviewStatus.feasible
+    assert resp.metrics_before_label == MetricsSourceLabel.saved_schedule_under_restriction
+    moved = next(c for c in resp.proposed_job_changes if c.job_id == saved.id)
+    assert moved.new_placement.assigned_site_id != saved.assigned_site_id
+    assert resp.metrics_before != resp.metrics_after
+    # A queued job with no saved placement is not charged a miss penalty in "before".
+    assert resp.metrics_before.jobs_unfulfilled == 0
+    assert resp.metrics_before.total_cost_usd < 100
+
+
 def test_job_moves_to_other_eligible_site_when_required():
     test_emergency_limit_only_requested_site_and_window()
 
