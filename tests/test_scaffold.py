@@ -82,7 +82,9 @@ def test_list_jobs_returns_seeded(client):
 
 
 def test_valid_job_submission(client):
-    before = client.get("/api/jobs").json()["revision"]
+    before_jobs = client.get("/api/jobs").json()
+    before_count = len(before_jobs["jobs"])
+    before_revision = before_jobs["revision"]
     payload = {
         "template": "inference_batch",
         "earliest_start": "2026-03-15T18:00:00+00:00",
@@ -93,13 +95,17 @@ def test_valid_job_submission(client):
     job = create.json()
     assert job["status"] == "queued"
     assert job["gpu_count"] == 4
+    assert job["assigned_site_id"] is None
+    assert job["scheduled_start"] is None
 
     listing = client.get("/api/jobs").json()
+    assert len(listing["jobs"]) == before_count + 1
     assert any(j["id"] == job["id"] for j in listing["jobs"])
-    assert listing["revision"] > before
+    assert listing["revision"] > before_revision
 
 
 def test_invalid_job_window(client):
+    before_count = len(client.get("/api/jobs").json()["jobs"])
     payload = {
         "template": "training_small",
         "earliest_start": "2026-03-18T00:00:00+00:00",
@@ -107,6 +113,7 @@ def test_invalid_job_window(client):
     }
     response = client.post("/api/jobs", json=payload)
     assert response.status_code == 422
+    assert len(client.get("/api/jobs").json()["jobs"]) == before_count
 
 
 def test_unknown_template_rejected(client):

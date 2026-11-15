@@ -149,7 +149,7 @@ function formatAssignment(value) {
 function shortJobId(id) {
   if (!id) return "—";
   const m = id.match(/(\d+)$/);
-  const num = m ? m[1].padStart(3, "0") : "000";
+  const num = m ? String(parseInt(m[1], 10)).padStart(3, "0") : "000";
   return `JOB-${num}`;
 }
 

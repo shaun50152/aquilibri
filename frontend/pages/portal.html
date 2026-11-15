@@ -3,113 +3,201 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AquaLibri — Equilibrium Portal</title>
+  <title>AquaLibri Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;1,900&family=Raleway:wght@700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:," />
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
-<body class="page page--portal">
-  <div class="aurora" aria-hidden="true"></div>
-  <div class="grain" aria-hidden="true"></div>
-  <div class="bg-word" aria-hidden="true">EQUILIBRIUM</div>
+<body class="page--portal">
+<div class="shell">
 
-  <header class="site-header glass" role="banner">
-    <div class="wrap header-inner">
-      <div>
-        <p class="kicker">AquaLibri · Simulated fleet</p>
-        <h1 class="display-title">User <em>Portal</em></h1>
-        <p class="sim-banner num" id="sim-banner">SIMULATED · — SITES · NO REAL GPUS</p>
-        <p class="header-clock num"><span class="label-inline">Simulation clock (UTC):</span> <span id="demo-clock">—</span></p>
+  <header class="topbar">
+    <div class="brand" id="brand"><span class="brandName">AquaLibri</span></div>
+    <nav aria-label="Primary" class="nav">
+      <a class="navLink" id="nav-portal" href="/portal" aria-current="page">Portal</a>
+      <a class="navLink" id="nav-operator" href="/operator">Operator</a>
+    </nav>
+    <div class="hdrRight">
+      <div class="clock" role="status" aria-label="Simulation clock">
+        <span class="clockDot blink" aria-hidden="true"></span><span class="clockSim">Sim</span><strong class="mono" id="demo-clock">—</strong>
       </div>
-      <nav class="header-actions" aria-label="Page navigation">
-        <button type="button" class="btn btn--ghost" id="visual-demo-toggle" aria-label="Toggle visual demo mode">Visual demo</button>
-        <a class="btn btn--primary-dark" href="/operator">Operator</a>
-      </nav>
-    </div>
-    <div class="wrap">
-      <div class="status-band" id="status-band" aria-live="polite">
-        <span class="muted">Session <span id="demo-session" class="num">—</span></span>
-        <span class="muted">Revision <span id="demo-revision" class="num">—</span></span>
-      </div>
-      <div id="demo-error" class="alert alert--error" hidden></div>
+      <button type="button" class="btn btnGhost" id="visual-demo-toggle" aria-pressed="false">Visual demo</button>
     </div>
   </header>
 
-  <main class="wrap layout-2col">
-    <section class="hero neon paper">
-      <p class="hero-kicker">Water-aware batch scheduling</p>
-      <h2 class="panel-title">Submit workload</h2>
-      <p class="body-serif">All data centers and GPU execution are <strong>simulated</strong>. Templates resolve GPU count and duration on the server.</p>
-      <div id="topology-mini" class="topology-mini" aria-label="Fleet topology highlights assigned site"></div>
+  <section class="welcome">
+    <div class="welcomeText">
+      <span class="kick" id="hero-kick">User portal</span>
+      <h1 class="pageTitle">Welcome back</h1>
+      <p class="pageSub"><span id="hero-sub">Send a workload and we place it where water is easiest.</span> <span class="badge" id="sim-banner">SIMULATED · NO REAL GPUS</span></p>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></span>
+        <div><div class="statVal mono" id="stat-jobs">—</div><div class="statLbl">Your jobs</div></div>
+      </div>
+      <div class="stat">
+        <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></span>
+        <div><div class="statVal mono" id="stat-running">—</div><div class="statLbl">Running now</div></div>
+      </div>
+      <div class="stat">
+        <span class="statIcon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span>
+        <div><div class="statVal mono" id="stat-next">—</div><div class="statLbl">Next start (UTC)</div></div>
+      </div>
+    </div>
+  </section>
 
-      <form id="job-form" class="stack" novalidate>
-        <fieldset class="field">
-          <legend class="field-label">Template</legend>
-          <div class="template-radios" role="radiogroup" aria-label="Job template">
-            <label class="template-card"><input type="radio" name="template" value="inference_batch" checked /> Inference batch <span class="small">4 GPU · 2 h</span></label>
-            <label class="template-card"><input type="radio" name="template" value="training_small" /> Training small <span class="small">8 GPU · 6 h</span></label>
-            <label class="template-card"><input type="radio" name="template" value="training_large" /> Training large <span class="small">16 GPU · 12 h</span></label>
-          </div>
+  <div id="demo-error" class="errBox" role="alert" hidden></div>
+
+  <!-- VISUAL DEMO controls (only with ?demo=1 / the toggle) -->
+  <section class="director" id="director" aria-label="Visual demo controls" hidden>
+    <span class="kick">Visual demo</span>
+    <button type="button" class="btn btnGhost" id="d-move">Operator applies the move</button>
+    <span id="director-tag"></span>
+  </section>
+
+  <!-- Completion notification -->
+  <div class="notice pop" id="notice" role="status" hidden>
+    <svg width="28" height="28" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="14" fill="#0F6E76"/><path d="M8 15.5 L13 20.5 L22 10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="noticeBody"><div class="noticeTitle" id="notice-title"></div><div class="noticeText" id="notice-text"></div></div>
+    <button type="button" class="btn btnP" id="notice-dismiss">Got it</button>
+  </div>
+
+  <div class="grid grid--portal">
+
+    <!-- SUBMIT -->
+    <section class="card submitCard" aria-label="Submit a job">
+      <div class="cardHead">
+        <div class="cardTitleRow">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+          <h2 class="cardTitle">New workload</h2>
+        </div>
+      </div>
+
+      <form id="job-form" class="form" novalidate>
+        <fieldset class="tplSet">
+          <legend class="lbl">Template · GPUs and runtime come from it</legend>
+          <label class="tplCard">
+            <input class="vh" type="radio" name="template" value="inference_batch" />
+            <span class="tplHead"><strong>Inference batch</strong><span class="tplBlurb">Short scoring runs</span></span>
+            <span class="tplSpec mono">4 GPU · 2 h</span>
+          </label>
+          <label class="tplCard">
+            <input class="vh" type="radio" name="template" value="training_small" checked />
+            <span class="tplHead"><strong>Training small</strong><span class="tplBlurb">Fine-tunes and experiments</span></span>
+            <span class="tplSpec mono">8 GPU · 6 h</span>
+          </label>
+          <label class="tplCard">
+            <input class="vh" type="radio" name="template" value="training_large" />
+            <span class="tplHead"><strong>Training large</strong><span class="tplBlurb">Long runs that can wait</span></span>
+            <span class="tplSpec mono">16 GPU · 12 h</span>
+          </label>
         </fieldset>
 
-        <div class="field">
-          <label class="field-label" for="earliest_start">Earliest start (UTC)</label>
-          <input class="input" id="earliest_start" name="earliest_start" type="datetime-local" required />
-        </div>
-        <div class="field">
-          <label class="field-label" for="deadline">Deadline (UTC)</label>
-          <input class="input" id="deadline" name="deadline" type="datetime-local" required />
+        <div class="dtGrid">
+          <div><label class="lbl" for="earliest_start">Earliest start (UTC)</label><input id="earliest_start" name="earliest_start" class="fld mono" type="datetime-local" required /></div>
+          <div><label class="lbl" for="deadline">Deadline (UTC)</label><input id="deadline" name="deadline" class="fld mono" type="datetime-local" required /></div>
         </div>
 
-        <div id="estimate-box" class="estimate-box" role="status"></div>
+        <div class="est" aria-live="polite">
+          <div class="estLine" id="est-line"></div>
+          <div class="estNote" id="est-note"></div>
+        </div>
 
-        <button type="submit" class="btn btn--primary btn--portal" id="submit-btn">
+        <div id="form-error" class="errBox rise" role="alert" hidden></div>
+
+        <button type="submit" class="btn btnP" id="submit-btn">
+          <span class="spinr" id="submit-spinner" aria-hidden="true" hidden></span>
           <span id="submit-label">Submit job</span>
-          <span class="spinner" id="submit-spinner" hidden aria-hidden="true"></span>
         </button>
       </form>
-      <div id="form-success" class="success-panel" hidden role="status"></div>
-      <div id="form-error" class="alert alert--error" hidden role="alert"></div>
+
+      <div class="success pop" id="form-success" role="status" hidden>
+        <div class="successTitle" id="success-title"></div>
+        <div class="successText" id="success-text"></div>
+        <button type="button" class="btn btnGhost" id="submit-another">Submit another job</button>
+      </div>
     </section>
 
-    <section class="paper stack">
-      <div class="toolbar">
-        <h2 class="panel-title" style="margin:0">Your jobs</h2>
-        <button type="button" class="btn btn--secondary" id="refresh-btn">Refresh</button>
+    <!-- JOBS -->
+    <section class="card jobsCard" aria-label="Your jobs">
+      <div class="cardHead">
+        <div class="cardTitleRow">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+          <h2 class="cardTitle">Your jobs</h2>
+        </div>
+        <span class="listNote" id="list-note"></span>
       </div>
-      <div id="jobs-skeleton" class="skeleton" hidden></div>
-      <div id="jobs-empty" class="empty" hidden>No jobs yet — submit one to begin.</div>
-      <div id="list-error" class="alert alert--error" hidden></div>
-      <div class="table-scroll">
-        <table id="jobs-table" class="data-table">
-          <thead>
-            <tr>
-              <th scope="col">ID</th>
-              <th scope="col">Template</th>
-              <th scope="col">Status</th>
-              <th scope="col">Data center</th>
-              <th scope="col">Start (UTC)</th>
-              <th scope="col">Deadline (UTC)</th>
-            </tr>
-          </thead>
-          <tbody id="jobs-body"></tbody>
-        </table>
+      <div id="list-tag"></div>
+      <div class="stack10" id="jobs-skeleton" aria-busy="true" aria-label="Loading jobs"><div class="shim"></div><div class="shim"></div><div class="shim"></div></div>
+      <div id="list-error" class="errBox" role="alert" hidden></div>
+      <div class="empty" id="jobs-empty" hidden>
+        <div class="emptyTitle">No jobs yet</div>
+        <div class="emptyText">Pick a template and submit your first workload. It appears here the moment the server accepts it.</div>
       </div>
-
-      <article id="job-detail" class="glass detail-panel" hidden>
-        <h3 class="panel-title">Job detail</h3>
-        <p id="detail-id" class="num"></p>
-        <p id="moved-notice" class="alert alert--warn" hidden role="status"></p>
-        <ol class="journey" id="journey-track" aria-label="Job journey"></ol>
-        <p id="runtime-progress" class="progress-basis small"></p>
-        <h4 class="field-label">Activity</h4>
-        <p class="small muted">Recorded in this browser</p>
-        <ul id="activity-log" class="activity-log"></ul>
-        <div id="result-actions"></div>
-      </article>
+      <div class="stack10" id="jobs-body"></div>
     </section>
-  </main>
+
+    <!-- PLACEMENT (teal highlight) -->
+    <section class="card cardTeal placeCard" aria-label="Where your job runs">
+      <div class="cardHead">
+        <div class="cardTitleRow">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c3 4.5 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-6.5 6-11z"/></svg>
+          <h2 class="cardTitle">Where it runs</h2>
+        </div>
+      </div>
+      <div class="tankFit tankFitMini"><div class="tankBox"><svg id="topology-mini" role="img" aria-label="Simulated sites"></svg></div></div>
+      <p class="miniCap" id="mini-caption">Loading simulated sites…</p>
+    </section>
+  </div>
+
+  <!-- DETAIL -->
+  <section class="card detail rise" id="job-detail" aria-label="Job details" aria-live="polite" hidden>
+    <div class="dHead">
+      <div class="dHeadText">
+        <h2 class="dTitle" id="d-title"></h2>
+        <div class="dSpec" id="d-spec"></div>
+      </div>
+      <span class="dPill" id="d-pill"></span>
+    </div>
+
+    <div class="moved pop" id="moved-notice" hidden>
+      <span class="movedChip">● Moved ✓</span>
+      <div class="movedText"><strong id="moved-route"></strong> <span id="moved-text"></span></div>
+    </div>
+    <div class="failBox" id="d-failed" role="alert" hidden></div>
+
+    <div class="detailBody">
+      <div class="detailMain">
+        <div class="jny">
+          <div class="jTrack" id="j-track"><div class="jRail"><div class="jFill" id="j-fill"></div></div></div>
+          <div class="jLabels" id="j-labels"></div>
+          <div class="jProg">
+            <div class="jProgLine" id="runtime-progress"></div>
+            <div class="jBasis">Basis: simulated clock minus scheduled start. Not GPU telemetry.</div>
+          </div>
+        </div>
+        <div class="result pop" id="d-result" hidden>
+          <div class="resBody"><div class="resName" id="d-file"></div><div class="resNote">Sample output from the simulation, not a real GPU run.</div></div>
+          <span id="d-download"></span>
+        </div>
+      </div>
+      <div>
+        <h3 class="actTitle">Activity</h3>
+        <p class="actNote">Recorded in this browser while this page was open.</p>
+        <ol class="actList" id="activity-log"></ol>
+        <dl class="dl">
+          <dt>Data center</dt><dd class="strong" id="d-site"></dd>
+          <dt>Scheduled start</dt><dd class="mono" id="d-start"></dd>
+          <dt>Deadline</dt><dd class="mono" id="d-dl"></dd>
+          <dt>Earliest start</dt><dd class="mono" id="d-es"></dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+</div>
 
   <script src="/static/js/api.js"></script>
   <script src="/static/js/ui.js"></script>

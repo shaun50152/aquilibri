@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Design system</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#EAF0FB}
+*{box-sizing:border-box}
+.mono{font-family:'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;font-weight:600}
+.kick{font-family:'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;color:#2B4066}
+.btn{min-height:44px;padding:0 18px;border-radius:12px;border:1px solid transparent;font:700 14px 'Raleway',system-ui,sans-serif;cursor:pointer}
+.sec{background:#fff;border-radius:22px;padding:30px 32px;display:flex;flex-direction:column;gap:20px;box-shadow:0 1px 0 #CBD8F0}
+.sec h2{margin:0;font-family:'Merriweather',Georgia,serif;font-weight:400;font-size:38px;line-height:1.05}
+td,th{padding:10px 12px;text-align:left;font-size:13.5px;border-bottom:1px solid #DAE4F5;vertical-align:top}
+th{font-family:'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#2B4066;font-weight:500}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes dash{to{stroke-dashoffset:-26}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</helmet>
+<div style="width:1280px;min-height:2100px;padding:64px;background:#EAF0FB;color:#0A1630;font-family:'Raleway',system-ui,sans-serif;display:flex;flex-direction:column;gap:24px">
+
+  <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px">
+    <div class="kick">05 · Design system · Equilibrium Instrument</div>
+    <h1 style="margin:0;font-family:'Merriweather',Georgia,serif;font-weight:400;font-size:58px;line-height:.96;letter-spacing:-.01em">Tokens, type, states, motion</h1>
+    <p style="margin:0;max-width:760px;font-size:16px;line-height:1.5;color:#2B4066">Everything the Cursor prompt references. Dark surfaces carry the ring and chart; paper surfaces carry forms, tables and numbers. Contrast was chosen for 4.5 to 1 text on both.</p>
+  </div>
+
+  <section class="sec">
+    <h2>Color tokens</h2>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+      <sc-for list="{{colors}}" as="c" hint-placeholder-count="16">
+        <div style="display:flex;gap:12px;align-items:center;padding:10px;border-radius:14px;border:1px solid #DAE4F5">
+          <div style="width:52px;height:52px;border-radius:12px;background:{{c.hex}};box-shadow:inset 0 0 0 1px rgba(10,22,48,.2);flex:none"></div>
+          <div style="min-width:0"><div class="mono" style="font-size:11.5px;font-weight:700;overflow-wrap:anywhere">{{c.token}}</div><div class="mono" style="font-size:11.5px;color:#2B4066">{{c.hex}}</div><div style="font-size:12px;color:#2B4066;line-height:1.3">{{c.use}}</div></div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Typography</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px">
+      <div style="padding:16px;border-radius:14px;background:#F4F7FD"><div class="kick">--font-display</div><div style="font-family:'Merriweather',Georgia,serif;font-size:44px;line-height:1">Aa Equilibrium</div><div class="mono" style="font-size:11.5px;color:#2B4066;margin-top:8px">'Instrument Serif', Georgia, 'Times New Roman', serif</div></div>
+      <div style="padding:16px;border-radius:14px;background:#F4F7FD"><div class="kick">--font-ui</div><div style="font-size:34px;font-weight:700;line-height:1.1">Aa Hanken Grotesk</div><div class="mono" style="font-size:11.5px;color:#2B4066;margin-top:8px">'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif</div></div>
+      <div style="padding:16px;border-radius:14px;background:#F4F7FD"><div class="kick">--font-mono</div><div class="mono" style="font-size:32px;font-weight:700;line-height:1.1">0123 L/h</div><div class="mono" style="font-size:11.5px;color:#2B4066;margin-top:8px">'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace</div></div>
+    </div>
+    <table style="border-collapse:collapse;width:100%">
+      <thead><tr><th>Role</th><th>Family</th><th>Size / line</th><th>Weight</th><th>Sample</th></tr></thead>
+      <tbody>
+        <sc-for list="{{types}}" as="t" hint-placeholder-count="8">
+          <tr><td style="font-weight:700">{{t.role}}</td><td class="mono" style="font-size:12px">{{t.fam}}</td><td class="mono" style="font-size:12px">{{t.size}}</td><td class="mono" style="font-size:12px">{{t.w}}</td><td><span style="{{t.style}}">{{t.sample}}</span></td></tr>
+        </sc-for>
+      </tbody>
+    </table>
+  </section>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px">
+    <section class="sec">
+      <h2>Spacing</h2>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{space}}" as="s" hint-placeholder-count="9">
+          <div style="display:flex;gap:14px;align-items:center"><span class="mono" style="width:96px;font-size:12px">{{s.token}}</span><span style="height:14px;width:{{s.px}}px;background:#0042AC;border-radius:3px"></span><span class="mono" style="font-size:12px;color:#2B4066">{{s.px}}px · {{s.use}}</span></div>
+        </sc-for>
+      </div>
+    </section>
+    <section class="sec">
+      <h2>Radii, borders, shadows</h2>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+        <sc-for list="{{shapes}}" as="s" hint-placeholder-count="6">
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="height:64px;background:{{s.bg}};border-radius:{{s.r}};border:{{s.b}};box-shadow:{{s.sh}}"></div><div class="mono" style="font-size:11.5px;font-weight:700">{{s.token}}</div><div class="mono" style="font-size:11px;color:#2B4066;line-height:1.35">{{s.spec}}</div></div>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+
+  <section class="sec">
+    <h2>Buttons, inputs, focus</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end">
+      <button type="button" class="btn" style="background:#0042AC;color:#fff">Primary on paper</button>
+      <button type="button" class="btn" style="background:#00D3FB;color:#00122E">Primary on dark</button>
+      <button type="button" class="btn" style="background:#fff;color:#0A1630;border-color:#9DB1D6">Secondary</button>
+      <button type="button" class="btn" style="background:#00122E;color:#EEF4FF;border-color:#2B5AA8">Ghost on dark</button>
+      <button type="button" class="btn" style="background:#FF8A3D;color:#2A0F00">Emergency action</button>
+      <button type="button" class="btn" style="background:#0042AC;color:#fff;opacity:.45;cursor:not-allowed" disabled>Disabled</button>
+      <div style="width:200px"><label for="x1" style="font-size:12.5px;font-weight:700;display:block;margin-bottom:6px">Input</label><input id="x1" value="300" style="width:100%;min-height:48px;border-radius:12px;border:1px solid #8EA4CC;padding:0 12px;font:15px 'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums"></div>
+      <div style="width:200px"><label for="x2" style="font-size:12.5px;font-weight:700;display:block;margin-bottom:6px">Focus ring</label><input id="x2" value="3 px, #E39B00" style="width:100%;min-height:48px;border-radius:12px;border:1px solid #8EA4CC;padding:0 12px;font:15px 'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;outline:3px solid #E39B00;outline-offset:2px"></div>
+    </div>
+    <div class="mono" style="font-size:12px;color:#2B4066;line-height:1.6">Min height 44 px (48 px in the portal). Radius 12. Primary label weight 700. Hover lifts 1 px and adds a 24 px cyan shadow. Focus is 3 px #E39B00 on paper and #FFD27A on dark, offset 2 px, never removed.</div>
+  </section>
+
+  <section class="sec">
+    <h2>Status treatments</h2>
+    <p style="margin:0;font-size:14px;color:#2B4066">Every status has a shape and a word, so color is never the only signal.</p>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+      <sc-for list="{{statuses}}" as="s" hint-placeholder-count="10">
+        <div style="display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:{{s.bg}};color:{{s.fg}};border:2px {{s.bs}} {{s.bc}}">
+          <span aria-hidden="true" style="{{s.dot}}"></span>
+          <div><div style="font-weight:700;font-size:14px">{{s.name}}</div><div style="font-size:12px;opacity:.9;line-height:1.3">{{s.rule}}</div></div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Motion</h2>
+    <table style="border-collapse:collapse;width:100%">
+      <thead><tr><th>Moment</th><th>Duration</th><th>Easing</th><th>Why it exists</th></tr></thead>
+      <tbody>
+        <sc-for list="{{motion}}" as="m" hint-placeholder-count="12">
+          <tr><td style="font-weight:700">{{m.name}}</td><td class="mono" style="font-size:12px">{{m.dur}}</td><td class="mono" style="font-size:12px">{{m.ease}}</td><td>{{m.why}}</td></tr>
+        </sc-for>
+      </tbody>
+    </table>
+    <div class="mono" style="font-size:12px;color:#2B4066;line-height:1.6">Reduced motion: <code>@media (prefers-reduced-motion: reduce)</code> turns off every keyframe and transition. State stays legible through shape and text: dashed versus solid, hollow versus filled, and words in every chip.</div>
+  </section>
+
+  <section class="sec">
+    <h2>Layout, hierarchy, responsive</h2>
+    <table style="border-collapse:collapse;width:100%">
+      <thead><tr><th>Page</th><th>Layout and relative sizes</th><th>Hierarchy, top to bottom</th><th>Below 900 px, below 640 px</th></tr></thead>
+      <tbody>
+        <sc-for list="{{layouts}}" as="l" hint-placeholder-count="2">
+          <tr><td style="font-weight:700">{{l.page}}</td><td>{{l.layout}}</td><td>{{l.order}}</td><td>{{l.resp}}</td></tr>
+        </sc-for>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sec">
+    <h2>Copy and states</h2>
+    <table style="border-collapse:collapse;width:100%">
+      <thead><tr><th>Where</th><th>State</th><th>Exact copy</th></tr></thead>
+      <tbody>
+        <sc-for list="{{copy}}" as="c" hint-placeholder-count="16">
+          <tr><td style="font-weight:700;white-space:nowrap">{{c.where}}</td><td class="mono" style="font-size:12px;white-space:nowrap">{{c.state}}</td><td>{{c.text}}</td></tr>
+        </sc-for>
+      </tbody>
+    </table>
+  </section>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() {
+    const colors = [
+      ['--abyss', '#00122E', 'Page ground on dark pages'], ['--deep', '#001A40', 'Ring panel, hero ink'], ['--panel', '#00224F', 'Cards on dark'], ['--line', '#0A3A82', 'Hairlines on dark'],
+      ['--water', '#00D3FB', 'Water, GPU arcs, primary on dark'], ['--water-ghost', '#8FEBFF', 'PROPOSED only: dashed arcs, hollow rings'], ['--water-deep', '#0042AC', 'Primary on paper, current series'], ['--water-ink', '#003180', 'Text on paper in the water family'],
+      ['--ember', '#FF8A3D', 'Cap, alert, over-cap on dark'], ['--ember-ink', '#B93D00', 'Alert text and borders on paper'], ['--ember-wash', '#FFF1E6', 'Alert and infeasible panels'], ['--applied', '#FFFFFF', 'APPLIED only: solid arcs, filled nodes'],
+      ['--paper', '#F4F7FD', 'Cards, drawers, tables'], ['--mist', '#EAF0FB', 'Portal and canvas ground'], ['--ink', '#0A1630', 'Primary text on paper'], ['--ink-2', '#2B4066', 'Secondary text on paper']
+    ].map(a => ({ token: a[0], hex: a[1], use: a[2] }));
+    const types = [
+      ['Display', 'Instrument Serif', '64–84 / 0.96', '400', "font-family:'Merriweather',Georgia,serif;font-size:34px", 'Equilibrium'],
+      ['Page title', 'Instrument Serif', '34–38 / 1.05', '400', "font-family:'Merriweather',Georgia,serif;font-size:30px", 'Fleet equilibrium'],
+      ['Panel title', 'Instrument Serif', '28 / 1.1', '400', "font-family:'Merriweather',Georgia,serif;font-size:26px", 'Gemini explains the plan'],
+      ['Body', 'Hanken Grotesk', '15–15.5 / 1.5', '400', "font-size:15px", 'Move JOB-014 to Beta River.'],
+      ['UI label', 'Hanken Grotesk', '13–14 / 1.4', '600–700', "font-size:13.5px;font-weight:700", 'Additional cost budget'],
+      ['Small', 'Hanken Grotesk', '12–12.5 / 1.4', '400–600', "font-size:12.5px", 'Nothing changes until you apply.'],
+      ['Number', 'JetBrains Mono', '14–22 / 1.2', '700', "font-family:'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;font-size:18px;font-weight:700", '34,992 L'],
+      ['Kicker', 'JetBrains Mono', '11 / 1.2, +0.14em, caps', '500', "font-family:'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;font-size:11px;letter-spacing:.14em", 'PROPOSED · NOT APPLIED']
+    ].map(a => ({ role: a[0], fam: a[1], size: a[2], w: a[3], style: a[4], sample: a[5] }));
+    const space = [['--s-1', 4, 'icon gaps'], ['--s-2', 8, 'chip gaps'], ['--s-3', 12, 'field gaps'], ['--s-4', 16, 'card inner gaps'], ['--s-5', 20, 'panel padding'], ['--s-6', 24, 'section gaps'], ['--s-8', 32, 'page gutter'], ['--s-12', 48, 'bottom margin'], ['--s-16', 64, 'board padding']].map(a => ({ token: a[0], px: a[1], use: a[2] }));
+    const shapes = [
+      { token: '--r-input', r: '12px', b: '1px solid #8EA4CC', bg: '#fff', sh: 'none', spec: '12 px · 1 px #8EA4CC' },
+      { token: '--r-card', r: '22px', b: '0', bg: '#fff', sh: '0 1px 0 #CBD8F0, 0 26px 50px -34px rgba(0,18,46,.55)', spec: '20–24 px · shadow-card' },
+      { token: '--r-glass', r: '24px', b: '1px solid #0A3A82', bg: '#0A3446', sh: 'none', spec: '24 px · 1 px #0A3A82 · dark gradient' },
+      { token: '--r-pill', r: '999px', b: '2px dashed #0042AC', bg: '#fff', sh: 'none', spec: 'chips · dashed = proposed' },
+      { token: '--shadow-paper', r: '16px', b: '0', bg: '#F4F7FD', sh: '0 24px 60px -30px rgba(0,0,0,.7)', spec: '0 24 60 -30 rgba(0,0,0,.7)' },
+      { token: '--glow-water', r: '16px', b: '0', bg: '#00D3FB', sh: '0 8px 24px -8px rgba(0,211,251,.8)', spec: '0 8 24 -8 rgba(0,211,251,.8)' }
+    ];
+    const dot = (s) => 'width:12px;height:12px;flex:none;display:inline-block;' + s;
+    const statuses = [
+      { name: 'Queued', rule: 'Hollow gray ring', dot: dot('border-radius:50%;border:2px solid #2B4066'), bg: '#F4F7FD', fg: '#0A1630', bs: 'solid', bc: 'transparent' },
+      { name: 'Scheduled', rule: 'Half-filled blue ring', dot: dot('border-radius:50%;border:2px solid #0042AC;background:linear-gradient(90deg,#0042AC 50%,transparent 50%)'), bg: '#F4F7FD', fg: '#0A1630', bs: 'solid', bc: 'transparent' },
+      { name: 'Running', rule: 'Solid blue dot, 1.4 s blink', dot: dot('border-radius:50%;background:#0042AC;animation:blink 1.4s ease-in-out infinite'), bg: '#F4F7FD', fg: '#0A1630', bs: 'solid', bc: 'transparent' },
+      { name: 'Completed', rule: 'Ink square, check in toasts', dot: dot('border-radius:2px;background:#0A1630'), bg: '#F4F7FD', fg: '#0A1630', bs: 'solid', bc: 'transparent' },
+      { name: 'Failed', rule: 'Ember diamond, ember border', dot: dot('transform:rotate(45deg);background:#B93D00'), bg: '#FFF1E6', fg: '#5A1E00', bs: 'solid', bc: '#B93D00' },
+      { name: 'Proposed', rule: 'Dashed border, hollow ○, ghost cyan', dot: dot('border-radius:50%;border:2px dashed #0042AC'), bg: '#fff', fg: '#003180', bs: 'dashed', bc: '#0042AC' },
+      { name: 'Applied', rule: 'Solid border, filled ●, check', dot: dot('border-radius:50%;background:#fff;border:3px solid #00122E'), bg: '#00122E', fg: '#fff', bs: 'solid', bc: '#00122E' },
+      { name: 'Over cap', rule: 'Ember ring and ▲ with hours over', dot: dot('border-radius:50%;border:3px solid #FF8A3D;background:#2B1203'), bg: '#2B1203', fg: '#FFE7D3', bs: 'solid', bc: '#FF8A3D' },
+      { name: 'Stale preview', rule: 'Striped ember band, Apply locked', dot: dot('background:repeating-linear-gradient(115deg,#B93D00 0 3px,#FFF1E6 3px 6px)'), bg: '#FFF1E6', fg: '#5A1E00', bs: 'solid', bc: '#B93D00' },
+      { name: 'Infeasible', rule: 'Half arc, ✕ chip, suggestions', dot: dot('background:#B93D00;clip-path:polygon(20% 0,50% 30%,80% 0,100% 20%,70% 50%,100% 80%,80% 100%,50% 70%,20% 100%,0 80%,30% 50%,0 20%)'), bg: '#FFF1E6', fg: '#5A1E00', bs: 'solid', bc: '#B93D00' }
+    ];
+    const motion = [
+      ['Hover and press', '150 ms', 'ease', 'Tells you a thing is clickable.'],
+      ['Color and border change', '200–600 ms', 'ease', 'Band turns ember or calm without a jolt.'],
+      ['Card reveal (rise)', '500 ms', 'cubic-bezier(.2,.8,.2,1)', 'Detail drawers and explanation lines, 180 ms stagger.'],
+      ['Chip pop', '500 ms', 'cubic-bezier(.2,.8,.2,1)', 'New state appears: PROPOSED or APPLIED.'],
+      ['Node arc update', '900 ms', 'cubic-bezier(.2,.8,.2,1)', 'GPU use changes on a site.'],
+      ['Chart proposal wipe', '1300 ms', 'cubic-bezier(.3,.7,.2,1)', 'Draws the proposed series left to right.'],
+      ['Sim-now marker', '700 ms', 'cubic-bezier(.3,.7,.2,1)', 'Advance clock moves the line, not a jump cut.'],
+      ['Droplet travel', '2000 ms', 'cubic-bezier(.65,0,.25,1)', 'The apply moment. Once, then a landing ripple.'],
+      ['Alert ping', '1700 ms loop', 'ease-out', 'Only on a site that is over cap and unresolved.'],
+      ['Ghost arc flow', '1100 ms loop', 'linear', 'Dashes crawl toward the destination. Stops when stale.'],
+      ['Orb breathe', '4 s loop', 'ease-in-out', 'The fleet is alive. Tinted ember in alert.'],
+      ['Contour drift, ring spin', '22 s, 70–140 s', 'ease, linear', 'Ambient water texture. Never competes with data.']
+    ].map(a => ({ name: a[0], dur: a[1], ease: a[2], why: a[3] }));
+    const layouts = [
+      { page: '/operator', layout: 'Max 1440, 32 px gutter. Row 1: demo bar and status band, full width. Row 2: ring panel ~58% (min 620), right column ~42% (min 440). Row 3: hourly chart ~56%, queue and compliance ~44%.', order: '1 Status band. 2 Ring with fleet number in the orb. 3 Request form. 4 Gemini sentences, then the solver comparison and Apply. 5 Chart. 6 Queue and compliance.', resp: 'Under 900: columns stack in that order; ring caps at 640 px. Under 640: ring labels keep name only, table scrolls inside its card, site drawer sits under the ring, buttons go full width.' },
+      { page: '/portal', layout: 'Max 1280. Dark hero band about 300 px with headline and mini topology. Cards overlap the band by 72 px. Submit card ~36% (min 400), jobs and detail ~64% (min 560).', order: '1 Sim clock and simulated badge. 2 Submit. 3 Job list. 4 Detail: moved notice, water-line journey with runtime basis, activity, result.', resp: 'Under 900: submit stacks above jobs, mini topology drops below the headline. Under 640: job rows become two lines, journey labels shrink to 11 px, result card stacks its button.' }
+    ];
+    const copy = [
+      ['Portal submit', 'idle', 'Submit job'], ['Portal submit', 'loading', 'Sending to the scheduler…'], ['Portal submit', 'success', 'JOB-014 is in. Placed on Alpha Mesa DC. It starts at 20:00 UTC and must finish by 06:00 on Mar 16. We will tell you if it moves.'],
+      ['Portal submit', 'failure', 'Could not submit. Network error. Is the API server running?'], ['Portal submit', 'validation (422)', 'Could not submit. Deadline must be after the earliest start.'],
+      ['Portal list', 'empty', 'No jobs yet. Pick a template on the left and submit your first workload. It will appear here the moment the server accepts it.'],
+      ['Portal detail', 'moved', 'Alpha Mesa DC → Beta River DC. Alpha has a temporary water cap tonight. Your start time and deadline did not change.'],
+      ['Portal detail', 'running', 'Simulated runtime: 3 h of 6 h · 50%. Basis: simulated clock minus scheduled start. Not GPU telemetry.'],
+      ['Portal detail', 'complete', 'JOB-014 is done. Finished at 02:00 UTC on Beta River DC, four hours before your deadline. Your sample result is ready below.'],
+      ['Portal result', 'ready', 'Sample output from the simulation, not a real GPU run.'],
+      ['Operator band', 'routine', 'Fleet is balanced. Ten simulated sites, 14 jobs, zero cap breaches.'], ['Operator band', 'emergency', 'Water restriction: 300 L/h from 20:00 to 02:00 UTC. Alpha is projected at 470 L/h.'],
+      ['Operator preview', 'loading', 'Gemini read your request · SciPy solver running…'], ['Operator preview', 'proposed', 'Three moves bring Alpha back under its cap. Dashed arcs are a preview. Nothing has changed in the portal yet.'],
+      ['Gemini', 'explanation', 'Move JOB-014 to Beta River. It finishes at 02:00, four hours before its 06:00 deadline, and keeps Alpha within its temporary cap.'],
+      ['Operator preview', 'stale', 'This preview is out of date. A job was submitted after you previewed (revision 3 to 4). Apply is locked. Run the preview again.'],
+      ['Operator preview', 'infeasible', 'No feasible plan. With a $20 budget and Alpha capped at 300 L/h, JOB-009 cannot finish before 08:00 on any eligible site.'],
+      ['Operator apply', 'success', 'Plan applied · revision 4. The portal now shows JOB-014 on Beta River DC.'],
+      ['Any page', 'backend 501', 'Not available yet. This feature is waiting on the scheduling service. Nothing is being faked.'],
+      ['Any page', 'demo mode', 'VISUAL DEMO · labeled sample data, not from the backend']
+    ].map(a => ({ where: a[0], state: a[1], text: a[2] }));
+    return { colors, types, space, shapes, statuses, motion, layouts, copy };
+  }
+}
+</script>
+</body>
+</html>

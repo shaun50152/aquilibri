@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AquaLibri Portal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#EAF0FB}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit}
+.mono{font-family:'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;font-weight:600}
+.kick{font-family:'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:500}
+.btn{min-height:48px;padding:0 20px;border-radius:12px;border:1px solid transparent;font-weight:700;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:transform .15s ease,box-shadow .2s ease,background .2s ease}
+.btn:hover{transform:translateY(-1px)}
+.btn[disabled]{opacity:.55;cursor:not-allowed;transform:none}
+.btnP{background:#0042AC;color:#fff}
+.btnP:hover{box-shadow:0 10px 26px -10px rgba(0,66,172,.9)}
+.btnG{background:rgba(255,255,255,.06);color:#EEF4FF;border-color:#2B5AA8;min-height:44px;font-size:13px}
+.btnD{background:#fff;color:#0A1630;border-color:#9DB1D6}
+.btn:focus-visible,.seg:focus-visible,.jobBtn:focus-visible,input:focus-visible,a:focus-visible,.tplCard:focus-within{outline:3px solid #E39B00;outline-offset:2px}
+.seg{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #2B5AA8;background:transparent;color:#BBD2F5;font-weight:600;font-size:13px;cursor:pointer}
+.segOn{background:#EEF4FF;color:#00122E;border-color:#EEF4FF}
+.card{background:#FFFFFF;border-radius:22px;box-shadow:0 1px 0 #CBD8F0,0 26px 50px -34px rgba(0,18,46,.55)}
+.lbl{font-size:12.5px;font-weight:700;color:#2B4066;display:block;margin-bottom:6px}
+.fld{width:100%;min-height:48px;border-radius:12px;border:1px solid #8EA4CC;background:#fff;padding:0 12px;color:#0A1630;font-size:15px}
+.tplCard{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:14px;border:2px solid #C3D1EA;background:#fff;cursor:pointer;min-height:76px;transition:border-color .2s ease,background .2s ease,transform .2s ease}
+.tplCard:hover{transform:translateY(-1px)}
+.vh{position:absolute;opacity:0;width:1px;height:1px;overflow:hidden}
+.jobBtn{width:100%;text-align:left;border:2px solid transparent;background:#F4F7FD;border-radius:16px;padding:14px 16px;cursor:pointer;color:#0A1630;display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(110px,.9fr) minmax(130px,1fr) minmax(130px,1fr);gap:8px 16px;align-items:center;transition:background .2s ease,border-color .2s ease}
+.jobBtn:hover{background:#E4ECFA}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spinS{to{transform:rotate(360deg)}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes ping{0%{transform:scale(1);opacity:.9}100%{transform:scale(2.4);opacity:0}}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes dropIn{0%{opacity:0;transform:translateY(-36px) scale(.96)}60%{transform:translateY(4px)}100%{opacity:1;transform:none}}
+@keyframes shimmer{0%{background-position:-300px 0}100%{background-position:300px 0}}
+@keyframes stripes{to{background-position:40px 0}}
+@keyframes travelOnce{0%{offset-distance:0%;opacity:0}10%{opacity:1}90%{opacity:1}100%{offset-distance:100%;opacity:0}}
+@keyframes pop{0%{transform:scale(.85);opacity:0}60%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes drift{0%,100%{transform:rotate(0) scale(1)}50%{transform:rotate(3deg) scale(1.03)}}
+@keyframes pulseNode{0%,100%{box-shadow:0 0 0 0 rgba(0,66,172,.5)}50%{box-shadow:0 0 0 9px rgba(0,66,172,0)}}
+.spinr{width:18px;height:18px;border-radius:50%;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;animation:spinS .8s linear infinite}
+.rise{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+.dropIn{animation:dropIn .7s cubic-bezier(.2,.8,.2,1) both}
+.shim{background:linear-gradient(90deg,#DAE4F5 0,#F4F7FD 150px,#DAE4F5 300px);background-size:600px 100%;animation:shimmer 1.2s linear infinite;border-radius:10px}
+.fillRun{background-image:repeating-linear-gradient(115deg,rgba(255,255,255,.28) 0 8px,transparent 8px 16px);background-size:40px 100%;animation:stripes 1.2s linear infinite}
+.pingN{transform-box:fill-box;transform-origin:center;animation:ping 1.7s ease-out infinite}
+.breath{transform-origin:150px 150px;animation:breathe 4s ease-in-out infinite}
+.spinR{transform-origin:150px 150px;animation:spin 80s linear infinite}
+.contour{transform-origin:50% 50%;animation:drift 20s ease-in-out infinite}
+.drop{animation:travelOnce 2s cubic-bezier(.65,0,.25,1) forwards}
+.pop{animation:pop .5s cubic-bezier(.2,.8,.2,1) both}
+.blink{animation:blink 1.4s ease-in-out infinite}
+.pulseNode{animation:pulseNode 1.8s ease-out infinite}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+
+<div style="min-height:1720px;max-width:1280px;margin:0 auto;width:100%;font-family:'Raleway',system-ui,sans-serif;color:#0A1630;display:flex;flex-direction:column">
+
+  <!-- HERO BAND -->
+  <div style="background:radial-gradient(900px 500px at 80% -20%,#0B4DB0 0,#00122E 62%);color:#EEF4FF;padding:20px 32px 120px;border-radius:0 0 36px 36px;display:flex;flex-direction:column;gap:28px">
+    <header style="display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:28px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:12px">
+          <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" fill="none" stroke="#2F6BC8" stroke-width="1.5"/><circle cx="18" cy="18" r="9" fill="none" stroke="#00D3FB" stroke-width="1.5" stroke-dasharray="2 3"/><path d="M18 9 C21 14 23 16 23 19.5 A5 5 0 0 1 13 19.5 C13 16 15 14 18 9Z" fill="#00D3FB"/></svg>
+          <div style="font-family:'Merriweather',Georgia,serif;font-size:30px;line-height:1">AquaLibri</div>
+        </div>
+        <nav aria-label="Primary" style="display:flex;gap:6px">
+          <a href="Portal.dc.html" aria-current="page" style="min-height:44px;display:inline-flex;align-items:center;padding:0 16px;border-radius:10px;background:#EEF4FF;color:#00122E;text-decoration:none;font-weight:700;font-size:14px">Portal</a>
+          <a href="Operator.dc.html" style="min-height:44px;display:inline-flex;align-items:center;padding:0 16px;border-radius:10px;color:#BBD2F5;text-decoration:none;font-weight:600;font-size:14px">Operator</a>
+        </nav>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+        <div class="mono" role="status" aria-label="Simulation clock" style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border:1px solid #2B5AA8;border-radius:12px;font-size:13px;background:rgba(255,255,255,.04)">
+          <span class="blink" style="width:8px;height:8px;border-radius:50%;background:#00D3FB"></span><span style="color:#A9C6F2">SIM</span><strong>{{clockText}}</strong>
+        </div>
+        <div class="mono" style="font-size:11px;letter-spacing:.08em;padding:8px 12px;border-radius:999px;border:1px dashed #FFD27A;color:#FFD27A;text-align:center;line-height:1.3">SIMULATED<br>NO REAL GPUS</div>
+      </div>
+    </header>
+
+    <div style="display:flex;flex-wrap:wrap;gap:24px 40px;align-items:center;justify-content:space-between">
+      <div style="flex:1 1 440px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div class="kick" style="color:#5FE0FF">User portal · demo-user-001</div>
+        <h1 style="margin:0;font-family:'Merriweather',Georgia,serif;font-weight:400;font-size:52px;line-height:.98;letter-spacing:-.01em">Send a workload. We find it <em style="color:#00D3FB">the easiest water</em>.</h1>
+        <p style="margin:0;max-width:540px;font-size:17px;line-height:1.5;color:#D0E0FA">Pick a template, set a window, and AquaLibri places your job across ten simulated data centers, then keeps you posted if it moves.</p>
+      </div>
+
+      <!-- mini topology -->
+      <figure style="margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 auto">
+        <svg viewBox="0 0 300 300" width="270" height="270" role="img" aria-label="{{miniAria}}">
+          <defs><radialGradient id="mo" cx="50%" cy="38%" r="62%"><stop offset="0%" stop-color="#EFFFFF"/><stop offset="55%" stop-color="#00D3FB"/><stop offset="100%" stop-color="#003C9E"/></radialGradient></defs>
+          <g class="contour" fill="none" stroke="#0A3A82" stroke-width="1"><ellipse cx="150" cy="150" rx="142" ry="120" transform="rotate(-14 150 150)"/><ellipse cx="150" cy="150" rx="118" ry="98" transform="rotate(-14 150 150)"/></g>
+          <circle cx="150" cy="150" r="104" fill="none" stroke="#14459A"/>
+          <circle cx="150" cy="150" r="72" fill="none" stroke="#2F6BC8" style="stroke-dasharray:2 7" class="spinR"/>
+          <circle cx="150" cy="150" r="26" fill="url(#mo)" class="breath"/>
+          <sc-for list="{{miniArcs}}" as="a" hint-placeholder-count="1"><path d="{{a.d}}" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity=".9"/></sc-for>
+          <sc-for list="{{miniNodes}}" as="n" hint-placeholder-count="10">
+            <g>
+              <sc-if value="{{n.ping}}" hint-placeholder-val="{{ false }}"><circle cx="{{n.x}}" cy="{{n.y}}" r="10" fill="none" stroke="#FFFFFF" stroke-width="2" class="pingN"/></sc-if>
+              <circle cx="{{n.x}}" cy="{{n.y}}" r="{{n.r}}" fill="{{n.fill}}" stroke="{{n.stroke}}" stroke-width="2"/>
+            </g>
+          </sc-for>
+          <sc-for list="{{miniDrops}}" as="d" hint-placeholder-count="1"><circle r="6" fill="#FFFFFF" class="drop" style="offset-path:path('{{d.d}}');offset-rotate:0deg;filter:drop-shadow(0 0 6px #8FEBFF)"/></sc-for>
+        </svg>
+        <figcaption class="mono" style="font-size:11.5px;color:#D0E0FA;text-align:center;max-width:280px;line-height:1.4">{{miniCaption}}</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div style="margin-top:-72px;padding:0 32px 48px;display:flex;flex-direction:column;gap:20px">
+
+    <!-- DEMO DIRECTOR -->
+    <section aria-label="Demo director, design prototype only" style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:10px 14px;border:1px dashed #4A78C4;border-radius:16px;background:#00122E;color:#EEF4FF">
+      <span class="kick" style="color:#A9C6F2">Demo director · design only</span>
+      <button type="button" class="seg" onClick="{{dMove}}">Operator applies the move</button>
+      <button type="button" class="seg" onClick="{{dAdvance}}">Advance +1 h</button>
+      <button type="button" class="seg {{failOn.cls}}" onClick="{{dFail}}" aria-pressed="{{failOn.on}}">Next submit fails</button>
+      <button type="button" class="seg {{emptyOn.cls}}" onClick="{{dEmpty}}" aria-pressed="{{emptyOn.on}}">Empty list</button>
+      <button type="button" class="seg" onClick="{{dReset}}">Reset</button>
+    </section>
+
+    <!-- Completion notification -->
+    <sc-if value="{{notice}}" hint-placeholder-val="{{ false }}">
+      <div role="status" class="pop" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:16px 20px;border-radius:18px;background:#00122E;color:#EEF4FF;border:2px solid #00D3FB">
+        <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="14" fill="#00D3FB"/><path d="M8 15.5 L13 20.5 L22 10" fill="none" stroke="#00122E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div style="flex:1 1 320px"><div style="font-family:'Merriweather',Georgia,serif;font-size:26px;line-height:1.1">JOB-014 is done.</div><div style="font-size:14px;color:#D0E0FA">Finished at 02:00 UTC on Beta River DC, four hours before your deadline. Your sample result is ready below.</div></div>
+        <button type="button" class="btn btnP" style="background:#00D3FB;color:#00122E" onClick="{{dismissNotice}}">Got it</button>
+      </div>
+    </sc-if>
+
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
+
+      <!-- SUBMIT -->
+      <section class="card" style="flex:1 1 400px;min-width:0;padding:26px;display:flex;flex-direction:column;gap:18px" aria-label="Submit a job">
+        <div>
+          <h2 style="margin:0;font-family:'Merriweather',Georgia,serif;font-weight:400;font-size:34px;line-height:1.05">Submit a workload</h2>
+          <p style="margin:6px 0 0;font-size:14px;color:#2B4066">GPU count and runtime come from the template. Times are UTC.</p>
+        </div>
+
+        <sc-if value="{{showForm}}" hint-placeholder-val="{{ true }}">
+          <form style="display:flex;flex-direction:column;gap:16px" onSubmit="{{onSubmit}}" novalidate>
+            <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
+              <legend class="lbl" style="margin-bottom:8px">Template</legend>
+              <sc-for list="{{templates}}" as="t" hint-placeholder-count="3">
+                <label class="tplCard" style="border-color:{{t.border}};background:{{t.bg}}">
+                  <input class="vh" type="radio" name="tpl" value="{{t.key}}" checked="{{t.checked}}" onChange="{{t.pick}}">
+                  <span style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><strong style="font-size:15.5px">{{t.name}}</strong><span class="mono" style="font-size:12.5px;font-weight:700;color:#003180">{{t.spec}}</span></span>
+                  <span style="font-size:13px;color:#2B4066">{{t.blurb}}</span>
+                </label>
+              </sc-for>
+            </fieldset>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px">
+              <div><label class="lbl" for="es">Earliest start (UTC)</label><input id="es" class="fld mono" type="datetime-local" value="{{esVal}}" onChange="{{onEs}}"></div>
+              <div><label class="lbl" for="dl">Completion deadline (UTC)</label><input id="dl" class="fld mono" type="datetime-local" value="{{dlVal}}" onChange="{{onDl}}"></div>
+            </div>
+
+            <div style="padding:14px 16px;border-radius:14px;background:#E4ECFA;display:flex;flex-direction:column;gap:4px" aria-live="polite">
+              <div class="kick" style="color:#2B4066">Estimated need · from template</div>
+              <div style="font-size:15px"><strong class="mono">{{est.gpu}} GPUs</strong> for <strong class="mono">{{est.dur}}</strong> inside a <strong class="mono">{{est.win}}</strong> window</div>
+              <div style="font-size:13px;color:{{est.color}};font-weight:600">{{est.note}}</div>
+            </div>
+
+            <sc-if value="{{errMsg}}" hint-placeholder-val="{{ false }}">
+              <div role="alert" class="rise" style="padding:12px 14px;border-radius:12px;border:2px solid #B93D00;background:#FFF1E6;color:#5A1E00;font-size:14px;line-height:1.4"><strong>Could not submit.</strong> {{errMsg}}</div>
+            </sc-if>
+
+            <button type="submit" class="btn btnP" disabled="{{loading}}">
+              <sc-if value="{{loading}}" hint-placeholder-val="{{ false }}"><span class="spinr" aria-hidden="true"></span></sc-if>
+              {{submitLabel}}
+            </button>
+          </form>
+        </sc-if>
+
+        <sc-if value="{{showSuccess}}" hint-placeholder-val="{{ false }}">
+          <div class="pop" role="status" style="display:flex;flex-direction:column;gap:14px;padding:22px;border-radius:18px;background:#00122E;color:#EEF4FF">
+            <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><path d="M22 4 C28 14 34 19 34 27 A12 12 0 0 1 10 27 C10 19 16 14 22 4Z" fill="#00D3FB"/><path d="M16 27 L21 32 L29 22" fill="none" stroke="#00122E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div style="font-family:'Merriweather',Georgia,serif;font-size:32px;line-height:1.05">JOB-014 is in.</div>
+            <div style="font-size:14.5px;color:#D0E0FA;line-height:1.5">{{successText}}</div>
+            <button type="button" class="btn btnG" style="align-self:flex-start" onClick="{{another}}">Submit another job</button>
+          </div>
+        </sc-if>
+      </section>
+
+      <!-- JOBS + DETAIL -->
+      <div style="flex:1.5 1 560px;min-width:0;display:flex;flex-direction:column;gap:20px">
+
+        <section class="card" style="padding:24px;display:flex;flex-direction:column;gap:14px" aria-label="Your jobs">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+            <h2 style="margin:0;font-family:'Merriweather',Georgia,serif;font-weight:400;font-size:34px;line-height:1.05">Your jobs</h2>
+            <span class="mono" style="font-size:11.5px;color:#2B4066">{{listNote}}</span>
+          </div>
+
+          <sc-if value="{{listLoading}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:10px" aria-busy="true" aria-label="Loading jobs"><div class="shim" style="height:64px"></div><div class="shim" style="height:64px"></div><div class="shim" style="height:64px"></div></div>
+          </sc-if>
+
+          <sc-if value="{{listEmpty}}" hint-placeholder-val="{{ false }}">
+            <div style="padding:34px 20px;border:2px dashed #9DB1D6;border-radius:18px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px">
+              <svg width="54" height="54" viewBox="0 0 54 54" aria-hidden="true"><circle cx="27" cy="27" r="24" fill="none" stroke="#9DB1D6" stroke-width="2" stroke-dasharray="3 5"/><path d="M27 12 C32 20 37 24 37 31 A10 10 0 0 1 17 31 C17 24 22 20 27 12Z" fill="none" stroke="#0042AC" stroke-width="2.5"/></svg>
+              <div style="font-family:'Merriweather',Georgia,serif;font-size:28px">No jobs yet</div>
+              <div style="font-size:14px;color:#2B4066;max-width:340px;line-height:1.5">Pick a template on the left and submit your first workload. It will appear here the moment the server accepts it.</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{listReady}}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{jobs}}" as="j" hint-placeholder-count="4">
+                <button type="button" class="jobBtn {{j.anim}}" onClick="{{j.pick}}" aria-pressed="{{j.pressed}}" style="border-color:{{j.border}};background:{{j.bg}}">
+                  <span style="display:flex;flex-direction:column;gap:2px"><strong class="mono" style="font-size:14px">{{j.id}}</strong><span style="font-size:13px;color:#2B4066">{{j.tpl}}</span></span>
+                  <span style="display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:13.5px"><span aria-hidden="true" style="{{j.dot}}"></span>{{j.status}}</span>
+                  <span style="display:flex;flex-direction:column;gap:2px"><span class="kick" style="font-size:10px;color:#2B4066">Data center</span><span style="font-size:13.5px;font-weight:600">{{j.site}}</span></span>
+                  <span style="display:flex;flex-direction:column;gap:2px"><span class="kick" style="font-size:10px;color:#2B4066">Starts · deadline</span><span class="mono" style="font-size:12.5px">{{j.start}} · {{j.dl}}</span></span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+        </section>
+
+        <!-- DETAIL -->
+        <sc-if value="{{d.open}}" hint-placeholder-val="{{ true }}">
+          <section class="card rise" style="padding:26px;display:flex;flex-direction:column;gap:22px" aria-label="Job details" aria-live="polite">
+            <div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div class="kick" style="color:#2B4066">Job details</div>
+                <h2 style="margin:0;font-family:'Merriweather',Georgia,serif;font-weight:400;font-size:38px;line-height:1.05">{{d.id}} · {{d.tpl}}</h2>
+                <div class="mono" style="font-size:12.5px;color:#2B4066">{{d.spec}}</div>
+              </div>
+              <span style="display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:14px;padding:8px 14px;border-radius:999px;border:2px solid {{d.statusBorder}};background:#fff"><span aria-hidden="true" style="{{d.dot}}"></span>{{d.status}}</span>
+            </div>
+
+            <sc-if value="{{d.moved}}" hint-placeholder-val="{{ false }}">
+              <div class="pop" style="padding:14px 16px;border-radius:16px;background:#00122E;color:#EEF4FF;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+                <span class="mono" style="font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:999px;background:#fff;color:#00122E">● MOVED ✓</span>
+                <div style="flex:1 1 300px;font-size:14.5px;line-height:1.45"><strong style="color:#fff">Alpha Mesa DC → Beta River DC.</strong> Alpha has a temporary water cap tonight. Your start time and deadline did not change.</div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{d.failed}}" hint-placeholder-val="{{ false }}">
+              <div role="alert" style="padding:14px 16px;border-radius:16px;border:2px solid #B93D00;background:#FFF1E6;color:#5A1E00;font-size:14.5px;line-height:1.45"><strong>This job failed.</strong> A simulated GPU fault stopped it on Zeta Prairie DC after 2 h of its 6 h runtime. Nothing was charged and no result was produced.</div>
+            </sc-if>
+
+            <!-- journey -->
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="position:relative;height:44px;margin:0 18px">
+                <div style="position:absolute;left:0;right:0;top:19px;height:8px;border-radius:6px;background:#DAE4F5;overflow:hidden">
+                  <div class="{{d.fillCls}}" style="height:100%;width:{{d.fill}}%;background-color:#0042AC;border-radius:6px;transition:width 1.1s cubic-bezier(.2,.8,.2,1)"></div>
+                </div>
+                <sc-for list="{{d.steps}}" as="s" hint-placeholder-count="4">
+                  <div style="position:absolute;left:{{s.left}}%;top:8px;width:30px;height:30px;margin-left:-15px;border-radius:50%;background:{{s.bg}};border:3px solid {{s.border}};display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;transition:background .5s ease,border-color .5s ease" class="{{s.cls}}"><span aria-hidden="true">{{s.glyph}}</span></div>
+                </sc-for>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;text-align:center">
+                <sc-for list="{{d.steps}}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;gap:2px"><strong style="font-size:13.5px;color:{{s.tcolor}}">{{s.label}}</strong><span class="mono" style="font-size:11px;color:#2B4066">{{s.time}}</span></div>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:12px;background:#E4ECFA">
+                <div style="font-size:14.5px;font-weight:700">{{d.progressLine}}</div>
+                <div class="mono" style="font-size:11.5px;color:#2B4066">Basis: simulated clock minus scheduled start. Not GPU telemetry.</div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:24px">
+              <div style="flex:1 1 300px;min-width:0">
+                <h3 style="margin:0 0 10px;font-size:15px">Activity</h3>
+                <ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0">
+                  <sc-for list="{{d.events}}" as="e" hint-placeholder-count="4">
+                    <li class="rise" style="display:grid;grid-template-columns:96px 14px 1fr;gap:10px;padding:0 0 14px">
+                      <span class="mono" style="font-size:11.5px;color:#2B4066;padding-top:2px">{{e.stamp}}</span>
+                      <span aria-hidden="true" style="display:flex;flex-direction:column;align-items:center"><span style="width:10px;height:10px;border-radius:50%;background:{{e.dot}};margin-top:4px"></span><span style="flex:1;width:2px;background:#C3D1EA"></span></span>
+                      <span style="font-size:14px;line-height:1.45">{{e.text}}</span>
+                    </li>
+                  </sc-for>
+                </ol>
+              </div>
+              <dl style="flex:1 1 220px;min-width:0;margin:0;display:grid;grid-template-columns:auto 1fr;gap:10px 16px;align-content:start;font-size:14px">
+                <dt style="color:#2B4066">Data center</dt><dd style="margin:0;font-weight:700">{{d.site}}</dd>
+                <dt style="color:#2B4066">Scheduled start</dt><dd class="mono" style="margin:0">{{d.start}}</dd>
+                <dt style="color:#2B4066">Deadline</dt><dd class="mono" style="margin:0">{{d.dl}}</dd>
+                <dt style="color:#2B4066">Earliest start</dt><dd class="mono" style="margin:0">{{d.es}}</dd>
+              </dl>
+            </div>
+
+            <sc-if value="{{d.result}}" hint-placeholder-val="{{ false }}">
+              <div class="pop" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:18px;border-radius:18px;border:2px solid #00122E;background:#F4F7FD">
+                <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="7" y="4" width="26" height="32" rx="4" fill="none" stroke="#00122E" stroke-width="2.5"/><path d="M13 14 H27 M13 20 H27 M13 26 H21" stroke="#0042AC" stroke-width="2.5" stroke-linecap="round"/></svg>
+                <div style="flex:1 1 240px"><div style="font-weight:700;font-size:15px">{{d.fileName}}</div><div style="font-size:13px;color:#2B4066;line-height:1.4">Sample output from the simulation, not a real GPU run.</div></div>
+                <button type="button" class="btn btnP" onClick="{{download}}">{{downloadLabel}}</button>
+              </div>
+            </sc-if>
+          </section>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      tpl: 'training_small', es: '2026-03-15T18:00', dl: '2026-03-16T06:00',
+      submit: 'idle', err: '', failNext: false, submitted: false, placed: false, moved: false, movedAt: 1,
+      h: 0, sel: null, notice: false, empty: false, listLoading: true, downloaded: false
+    };
+    this.timers = [];
+  }
+  componentDidMount() { this.later(() => this.setState({ listLoading: false }), 900); }
+  componentWillUnmount() { this.timers.forEach(t => clearTimeout(t)); }
+  later(fn, ms) { this.timers.push(setTimeout(fn, ms)); }
+
+  renderVals() {
+    const S = this.state;
+    const TPL = {
+      inference_batch: { name: 'Inference batch', gpu: 4, dur: 2, blurb: 'Short, latency-tolerant scoring runs.' },
+      training_small: { name: 'Training small', gpu: 8, dur: 6, blurb: 'Fine-tunes and mid-size experiments.' },
+      training_large: { name: 'Training large', gpu: 16, dur: 12, blurb: 'Long runs that can wait for cheap water.' }
+    };
+    const t = TPL[S.tpl];
+    const h = S.h;
+    const pad = n => String(n).padStart(2, '0');
+    const MON = ['Jan', 'Feb', 'Mar', 'Apr'];
+    const at = off => new Date(Date.UTC(2026, 2, 15, 18 + off));
+    const hhmm = off => { const d = at(off); return pad(d.getUTCHours()) + ':00'; };
+    const stamp = off => { const d = at(off); return MON[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' · ' + pad(d.getUTCHours()) + ':00'; };
+    const full = off => { const d = at(off); return MON[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' ' + pad(d.getUTCHours()) + ':00'; };
+
+    // window estimate
+    const winH = Math.round((new Date(S.dl + ':00Z') - new Date(S.es + ':00Z')) / 3600000);
+    let est = { gpu: t.gpu, dur: t.dur + ' h', win: (isNaN(winH) ? '?' : winH) + ' h', note: '', color: '#003180' };
+    if (isNaN(winH) || winH <= 0) { est.note = 'The deadline must be after the earliest start.'; est.color = '#B93D00'; }
+    else if (winH < t.dur) { est.note = 'The window is shorter than the runtime, so this job can never finish.'; est.color = '#B93D00'; }
+    else est.note = (winH - t.dur) + ' h of slack gives the scheduler room to choose cheaper water.';
+
+    const templates = Object.keys(TPL).map(k => ({
+      key: k, name: TPL[k].name, spec: TPL[k].gpu + ' GPU · ' + TPL[k].dur + ' h', blurb: TPL[k].blurb,
+      checked: S.tpl === k, border: S.tpl === k ? '#0042AC' : '#C3D1EA', bg: S.tpl === k ? '#EEF4FF' : '#FFFFFF',
+      pick: () => this.setState({ tpl: k, err: '' })
+    }));
+
+    // ----- jobs -----
+    const star = S.submitted ? (() => {
+      const site = S.moved ? 'Beta River DC' : 'Alpha Mesa DC';
+      const st = 2, en = 8;
+      let status = 'Queued';
+      if (S.placed) status = h < st ? 'Scheduled' : (h < en ? 'Running' : 'Completed');
+      return { id: 'JOB-014', tplName: 'Training small', gpu: 8, dur: 6, st, en, dl: 12, site: S.placed ? site : 'Not yet placed', status, star: true };
+    })() : null;
+    const statics = [
+      { id: 'JOB-019', tplName: 'Training large', gpu: 16, dur: 12, status: 'Queued', site: 'Not yet placed', st: null, dl: 24 },
+      { id: 'JOB-012', tplName: 'Inference batch', gpu: 4, dur: 2, st: 0, en: 2, dl: 5, site: 'Theta Harbor DC', status: h < 2 ? 'Running' : 'Completed' },
+      { id: 'JOB-006', tplName: 'Inference batch', gpu: 4, dur: 2, st: -22, en: -20, dl: -14, site: 'Eta Summit DC', status: 'Completed' },
+      { id: 'JOB-003', tplName: 'Training small', gpu: 8, dur: 6, st: -8, en: -6, dl: 2, site: 'Zeta Prairie DC', status: 'Failed' }
+    ];
+    const all = (star ? [star] : []).concat(statics);
+    const sel = S.sel || (star ? 'JOB-014' : null);
+
+    const dotFor = st => {
+      const b = 'width:11px;height:11px;display:inline-block;flex:none;';
+      if (st === 'Queued') return b + 'border-radius:50%;border:2px solid #2B4066';
+      if (st === 'Scheduled') return b + 'border-radius:50%;border:2px solid #0042AC;background:linear-gradient(90deg,#0042AC 50%,transparent 50%)';
+      if (st === 'Running') return b + 'border-radius:50%;background:#0042AC;animation:blink 1.4s ease-in-out infinite';
+      if (st === 'Completed') return b + 'border-radius:2px;background:#0A1630';
+      return b + 'transform:rotate(45deg);background:#B93D00';
+    };
+    const jobs = all.map(j => ({
+      id: j.id, tpl: j.tplName + ' · ' + j.gpu + ' GPU', status: j.status, dot: dotFor(j.status), site: j.site,
+      start: j.st === null || j.st === undefined || j.site === 'Not yet placed' ? '—' : hhmm(j.st), dl: hhmm(j.dl),
+      pressed: sel === j.id ? 'true' : 'false', border: sel === j.id ? '#0042AC' : 'transparent', bg: sel === j.id ? '#EEF4FF' : '#F4F7FD',
+      anim: j.star ? 'dropIn' : '',
+      pick: () => this.setState({ sel: j.id, downloaded: false })
+    }));
+
+    // ----- detail -----
+    let d = { open: false };
+    const cur = all.find(j => j.id === sel);
+    if (cur) {
+      const status = cur.status;
+      const placed = cur.site !== 'Not yet placed';
+      const dur = cur.dur;
+      let phase = 0;
+      if (status === 'Scheduled') phase = 1; else if (status === 'Running') phase = 2; else if (status === 'Completed') phase = 3; else if (status === 'Failed') phase = 2;
+      let prog = 0;
+      if (status === 'Running') prog = Math.min((h - cur.st) / dur, 1);
+      let fill = [0, 33.3, 66.6 + prog * 33.3 * 0.9, 100][phase];
+      if (status === 'Failed') fill = 66.6 + 0.33 * 33.3;
+      const labels = ['Submitted', 'Placed', 'Running', status === 'Failed' ? 'Failed' : 'Complete'];
+      const planned = cur.st !== null && cur.st !== undefined && placed;
+      const times = [
+        cur.id === 'JOB-014' ? stamp(0) : (cur.id === 'JOB-019' ? stamp(0) : stamp(cur.st - 1)),
+        placed ? (cur.id === 'JOB-014' ? stamp(0) : stamp(cur.st - 1)) : 'waiting',
+        planned ? (phase >= 2 ? stamp(cur.st) : 'est. ' + stamp(cur.st)) : '—',
+        planned ? (phase === 3 ? stamp(cur.en) : (status === 'Failed' ? stamp(cur.en) : 'est. ' + stamp(cur.en))) : '—'
+      ];
+      const steps = [0, 1, 2, 3].map(i => {
+        const done = i < phase || (i === phase && phase === 3), curStep = i === phase && phase < 3;
+        const bad = status === 'Failed' && i === 3;
+        return {
+          left: (i * 33.333).toFixed(2),
+          bg: bad ? '#B93D00' : (done ? '#0042AC' : (curStep ? '#FFFFFF' : '#FFFFFF')),
+          border: bad ? '#B93D00' : (done || curStep ? '#0042AC' : '#9DB1D6'),
+          glyph: bad ? '✕' : (done ? '✓' : ''), cls: curStep ? 'pulseNode' : '',
+          label: labels[i], tcolor: done || curStep ? '#0A1630' : '#2B4066', time: times[i]
+        };
+      });
+      let progressLine = 'Waiting in the queue. The scheduler has not picked a site yet.';
+      if (status === 'Scheduled') progressLine = 'Placed. Starts at ' + hhmm(cur.st) + ' UTC, in ' + (cur.st - h) + ' simulated hour' + (cur.st - h === 1 ? '' : 's') + '.';
+      if (status === 'Running') progressLine = 'Simulated runtime: ' + (h - cur.st) + ' h of ' + dur + ' h · ' + Math.round(prog * 100) + '%';
+      if (status === 'Completed') progressLine = 'Finished. Simulated runtime: ' + dur + ' h of ' + dur + ' h · 100%';
+      if (status === 'Failed') progressLine = 'Stopped after 2 h of 6 h · 33%';
+
+      // events
+      const ev = [];
+      const E = (off, text, dot) => ev.push({ stamp: stamp(off), text, dot: dot || '#0042AC' });
+      if (cur.id === 'JOB-014') {
+        E(0, 'Submitted. Training small, 8 GPUs for 6 h, deadline ' + full(12) + '.');
+        if (S.placed) E(0, 'Placed on Alpha Mesa DC. Starts ' + hhmm(2) + '.');
+        if (S.moved) E(S.movedAt, 'Reassigned from Alpha Mesa DC to Beta River DC because of a temporary water cap at Alpha. Start time and deadline unchanged.', '#00122E');
+        if (S.placed && h >= 2) E(2, 'Started on ' + (S.moved ? 'Beta River DC' : 'Alpha Mesa DC') + '.');
+        if (h >= 8 && S.placed) E(8, 'Completed. Sample result is ready to download.', '#003180');
+      } else if (cur.id === 'JOB-019') {
+        E(0, 'Submitted. Training large, 16 GPUs for 12 h.'); E(0, 'Waiting for a site with 16 free GPUs inside your window.', '#9DB1D6');
+      } else if (cur.id === 'JOB-012') {
+        E(-3, 'Submitted. Inference batch, 4 GPUs for 2 h.'); E(-3, 'Placed on Theta Harbor DC.'); E(0, 'Started on Theta Harbor DC.'); if (h >= 2) E(2, 'Completed. Sample result is ready.', '#003180');
+      } else if (cur.id === 'JOB-006') {
+        E(-24, 'Submitted. Inference batch, 4 GPUs for 2 h.'); E(-22, 'Started on Eta Summit DC.'); E(-20, 'Completed. Sample result is ready.', '#003180');
+      } else {
+        E(-12, 'Submitted. Training small, 8 GPUs for 6 h.'); E(-8, 'Started on Zeta Prairie DC.'); E(-6, 'Failed. Simulated GPU fault on Zeta Prairie DC.', '#B93D00');
+      }
+      const result = status === 'Completed' && cur.id !== 'JOB-003';
+      d = {
+        open: true, id: cur.id, tpl: cur.tplName, spec: cur.gpu + ' GPUs · ' + dur + ' h runtime · simulated',
+        status, dot: dotFor(status), statusBorder: status === 'Failed' ? '#B93D00' : '#9DB1D6',
+        moved: cur.id === 'JOB-014' && S.moved, failed: status === 'Failed',
+        fill: fill.toFixed(1), fillCls: status === 'Running' ? 'fillRun' : '', steps, progressLine, events: ev,
+        site: cur.site, start: placed && cur.st !== null && cur.st !== undefined ? full(cur.st) + ' UTC' : '—', dl: full(cur.dl) + ' UTC',
+        es: cur.id === 'JOB-014' ? full(0) + ' UTC' : (cur.st !== null && cur.st !== undefined ? full(Math.min(cur.st - 2, 0)) + ' UTC' : full(0) + ' UTC'),
+        result, fileName: cur.id.toLowerCase() + '-sample-result.csv'
+      };
+    }
+
+    const star2 = star && star.placed !== false;
+    // mini topology
+    const pos = (i, r, c) => { const a = (-90 + i * 36) * Math.PI / 180; return [c + r * Math.cos(a), c + r * Math.sin(a)]; };
+    const assigned = S.submitted && S.placed ? (S.moved ? 3 : 0) : -1;
+    const miniNodes = [];
+    for (let i = 0; i < 10; i++) {
+      const p = pos(i, 104, 150), on = i === assigned;
+      miniNodes.push({ x: p[0].toFixed(1), y: p[1].toFixed(1), r: on ? 9 : 5, fill: on ? '#FFFFFF' : '#0A3C8F', stroke: on ? '#8FEBFF' : '#2F6BC8', ping: on });
+    }
+    const miniArcs = [], miniDrops = [];
+    if (S.moved && S.submitted) {
+      const a = pos(0, 104, 150), b = pos(3, 104, 150);
+      const cx = 150 + ((a[0] + b[0]) / 2 - 150) * 0.22, cy = 150 + ((a[1] + b[1]) / 2 - 150) * 0.22;
+      const dd = 'M ' + a[0].toFixed(1) + ' ' + a[1].toFixed(1) + ' Q ' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ' ' + b[0].toFixed(1) + ' ' + b[1].toFixed(1);
+      miniArcs.push({ d: dd }); miniDrops.push({ d: dd });
+    }
+    const miniCaption = !S.submitted ? 'Ten simulated sites. Submit a job to see where it lands.' : (!S.placed ? 'Queued. Waiting for a site.' : (S.moved ? 'JOB-014 moved from Alpha Mesa to Beta River. Simulated.' : 'JOB-014 is placed on Alpha Mesa DC. Simulated.'));
+
+    const onSubmit = e => {
+      if (e && e.preventDefault) e.preventDefault();
+      if (S.submit === 'loading') return;
+      if (isNaN(winH) || winH <= 0) { this.setState({ err: 'Deadline must be after the earliest start (422).' }); return; }
+      if (winH < t.dur) { this.setState({ err: 'The window is shorter than the ' + t.dur + ' h runtime. Move the deadline later.' }); return; }
+      this.setState({ submit: 'loading', err: '' });
+      this.later(() => {
+        if (this.state.failNext) { this.setState({ submit: 'idle', err: 'Network error. Is the API server running?', failNext: false }); return; }
+        this.setState({ submit: 'success', submitted: true, sel: 'JOB-014', empty: false, notice: false });
+        this.later(() => this.setState({ placed: true }), 1500);
+      }, 1500);
+    };
+
+    const hasSuccess = S.submit === 'success';
+    return {
+      clockText: '2026-03-' + (18 + h >= 24 ? '16' : '15') + ' ' + hhmm(h) + ' UTC',
+      templates, esVal: S.es, dlVal: S.dl, est,
+      onEs: e => this.setState({ es: e.target.value, err: '' }), onDl: e => this.setState({ dl: e.target.value, err: '' }),
+      onSubmit, loading: S.submit === 'loading', errMsg: S.err,
+      submitLabel: S.submit === 'loading' ? 'Sending to the scheduler…' : 'Submit job',
+      showForm: !hasSuccess, showSuccess: hasSuccess,
+      successText: S.placed ? 'Placed on Alpha Mesa DC. It starts at 20:00 UTC and must finish by 06:00 on Mar 16. We will tell you if it moves.' : 'Accepted and queued. The scheduler is choosing a site now.',
+      another: () => this.setState({ submit: 'idle' }),
+      listLoading: S.listLoading, listEmpty: !S.listLoading && (S.empty || false) , listReady: !S.listLoading && !S.empty,
+      jobs, d, listNote: S.empty ? '0 jobs' : all.length + ' jobs · simulated',
+      miniNodes, miniArcs, miniDrops, miniCaption, miniAria: miniCaption,
+      notice: S.notice || (S.submitted && S.placed && h >= 8 && !S.noticeGone), dismissNotice: () => this.setState({ noticeGone: true, notice: false }),
+      failOn: { on: S.failNext ? 'true' : 'false', cls: S.failNext ? 'segOn' : '' },
+      emptyOn: { on: S.empty ? 'true' : 'false', cls: S.empty ? 'segOn' : '' },
+      dFail: () => this.setState({ failNext: !S.failNext }),
+      dEmpty: () => this.setState({ empty: !S.empty }),
+      dMove: () => { if (S.submitted && S.placed) this.setState({ moved: true, movedAt: Math.max(h, 1), sel: 'JOB-014' }); },
+      dAdvance: () => this.setState({ h: Math.min(h + 1, 10), noticeGone: false }),
+      dReset: () => { this.timers.forEach(c => clearTimeout(c)); this.timers = []; this.setState({ tpl: 'training_small', es: '2026-03-15T18:00', dl: '2026-03-16T06:00', submit: 'idle', err: '', failNext: false, submitted: false, placed: false, moved: false, h: 0, sel: null, notice: false, noticeGone: false, empty: false, listLoading: true, downloaded: false }); this.later(() => this.setState({ listLoading: false }), 900); },
+      download: () => this.setState({ downloaded: true }),
+      downloadLabel: S.downloaded ? 'Saved ✓' : 'Download sample result'
+    };
+  }
+}
+</script>
+</body>
+</html>

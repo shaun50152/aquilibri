@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AquaLibri Operator</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#00122E}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit}
+.mono{font-family:'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;font-weight:600}
+.kick{font-family:'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:500}
+.btn{min-height:44px;padding:0 18px;border-radius:12px;border:1px solid transparent;font-weight:600;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s ease,background .2s ease,box-shadow .2s ease}
+.btn:hover{transform:translateY(-1px)}
+.btn:focus-visible,.nodeBtn:focus-visible,.chip:focus-visible,.seg:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #FFD27A;outline-offset:2px}
+.btn[disabled]{opacity:.45;cursor:not-allowed;transform:none}
+.btnP{background:#00D3FB;color:#00122E;box-shadow:0 0 0 0 rgba(0,211,251,.5)}
+.btnP:hover{box-shadow:0 8px 24px -8px rgba(0,211,251,.8)}
+.btnG{background:rgba(255,255,255,.06);color:#EEF4FF;border-color:#2B5AA8}
+.btnD{background:#fff;color:#0A1630;border-color:#B7C8C8}
+.btnO{background:#FF8A3D;color:#2A0F00}
+.seg{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #2B5AA8;background:transparent;color:#BBD2F5;font-weight:600;font-size:13px;cursor:pointer}
+.segOn{background:#EEF4FF;color:#00122E;border-color:#EEF4FF}
+.chip{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid #7C9CD6;background:#fff;color:#0A1630;font-size:13px;font-weight:600;cursor:pointer}
+.chip:hover{background:#EEF4FF}
+.paper{background:#F4F7FD;color:#0A1630;border-radius:20px;box-shadow:0 24px 60px -30px rgba(0,0,0,.7)}
+.glass{background:linear-gradient(180deg,rgba(0,50,130,.55),rgba(0,26,64,.75));border:1px solid #0A3A82;border-radius:24px}
+.lbl{font-size:12px;font-weight:600;color:#3B5280;display:block;margin-bottom:6px}
+.fld{width:100%;min-height:44px;border-radius:10px;border:1px solid #9DB1D6;background:#fff;padding:0 12px;color:#0A1630;font-size:14px}
+th{font-family:'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#3B5280;text-align:left;padding:10px 12px;font-weight:500;border-bottom:1px solid #C3D1EA;white-space:nowrap}
+td{padding:11px 12px;font-size:13px;border-bottom:1px solid #DAE4F5;vertical-align:middle;white-space:nowrap}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.92}50%{transform:scale(1.07);opacity:1}}
+@keyframes ping{0%{transform:scale(1);opacity:.9}100%{transform:scale(2.4);opacity:0}}
+@keyframes dash{to{stroke-dashoffset:-26}}
+@keyframes drift{0%,100%{transform:rotate(0) scale(1)}50%{transform:rotate(3deg) scale(1.03)}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes shimmer{0%{background-position:-300px 0}100%{background-position:300px 0}}
+@keyframes stripes{to{background-position:56px 0}}
+@keyframes travelOnce{0%{offset-distance:0%;opacity:0;transform:scale(.6)}10%{opacity:1;transform:scale(1)}90%{opacity:1}100%{offset-distance:100%;opacity:0;transform:scale(1.6)}}
+@keyframes ripple{0%{transform:scale(.4);opacity:.9}100%{transform:scale(3);opacity:0}}
+@keyframes pop{0%{transform:scale(.8);opacity:0}60%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes scan{0%{transform:scale(.3);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+.spin{transform-origin:360px 360px;animation:spin 90s linear infinite}
+.spinR{transform-origin:360px 360px;animation:spin 140s linear infinite reverse}
+.breathe{transform-origin:360px 360px;animation:breathe 4s ease-in-out infinite}
+.pingN{transform-box:fill-box;transform-origin:center;animation:ping 1.7s ease-out infinite}
+.dashflow{animation:dash 1.1s linear infinite}
+.contour{transform-origin:50% 50%;animation:drift 22s ease-in-out infinite}
+.rise{animation:rise .55s cubic-bezier(.2,.8,.2,1) both}
+.shim{background:linear-gradient(90deg,#DAE4F5 0,#F4F7FD 150px,#DAE4F5 300px);background-size:600px 100%;animation:shimmer 1.2s linear infinite;border-radius:8px}
+.stripeBand{background-image:repeating-linear-gradient(115deg,rgba(255,138,61,.16) 0 14px,transparent 14px 28px);background-size:56px 100%;animation:stripes 2.4s linear infinite}
+.drop{animation:travelOnce 2s cubic-bezier(.65,0,.25,1) forwards}
+.land{transform-box:fill-box;transform-origin:center;animation:ripple 1.4s ease-out 1.8s both}
+.pop{animation:pop .5s cubic-bezier(.2,.8,.2,1) both}
+.blink{animation:blink 1.4s ease-in-out infinite}
+.scanR{transform-box:fill-box;transform-origin:center;animation:scan 1.5s ease-out infinite}
+.lineT{transition:opacity .7s ease}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+
+<div style="min-height:1720px;background:radial-gradient(1200px 700px at 30% -10%,#0A3C8F 0,#00122E 60%);color:#EEF4FF;font-family:'Raleway',system-ui,sans-serif;padding:20px 32px 48px;display:flex;flex-direction:column;gap:20px;max-width:1440px;margin:0 auto;width:100%">
+
+  <!-- TOP BAR -->
+  <header style="display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:28px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px">
+        <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" fill="none" stroke="#2F6BC8" stroke-width="1.5"/><circle cx="18" cy="18" r="9" fill="none" stroke="#00D3FB" stroke-width="1.5" stroke-dasharray="2 3"/><path d="M18 9 C21 14 23 16 23 19.5 A5 5 0 0 1 13 19.5 C13 16 15 14 18 9Z" fill="#00D3FB"/></svg>
+        <div style="font-family:'Merriweather',Georgia,serif;font-size:30px;line-height:1;letter-spacing:-.01em">AquaLibri</div>
+      </div>
+      <nav aria-label="Primary" style="display:flex;gap:6px">
+        <a href="Portal.dc.html" style="min-height:44px;display:inline-flex;align-items:center;padding:0 16px;border-radius:10px;color:#BBD2F5;text-decoration:none;font-weight:600;font-size:14px;border:1px solid transparent">Portal</a>
+        <a href="Operator.dc.html" aria-current="page" style="min-height:44px;display:inline-flex;align-items:center;padding:0 16px;border-radius:10px;background:#EEF4FF;color:#00122E;text-decoration:none;font-weight:700;font-size:14px">Operator</a>
+      </nav>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+      <div class="mono" style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border:1px solid #2B5AA8;border-radius:12px;font-size:13px;background:rgba(255,255,255,.04)" role="status" aria-label="Simulation clock">
+        <span style="width:8px;height:8px;border-radius:50%;background:#00D3FB" class="blink"></span>
+        <span style="color:#A9C6F2">SIM</span><strong style="font-weight:700;color:#FFFFFF">{{clockText}}</strong>
+      </div>
+      <button type="button" class="btn btnG" onClick="{{advance}}">Advance +1 h</button>
+      <button type="button" class="btn btnG" onClick="{{reset}}">Reset demo</button>
+      <div class="mono" style="font-size:11px;letter-spacing:.08em;padding:8px 12px;border-radius:999px;border:1px dashed #FFD27A;color:#FFD27A;text-align:center;line-height:1.3">SIMULATED<br>10 SITES · 0 REAL GPUS</div>
+    </div>
+  </header>
+
+  <!-- DEMO DIRECTOR (design-only) -->
+  <section aria-label="Demo director, design prototype only" style="display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;padding:10px 14px;border:1px dashed #4A78C4;border-radius:16px;background:rgba(255,255,255,.03)">
+    <span class="kick" style="color:#A9C6F2">Demo director · design only</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap" role="group" aria-label="Story stage">
+      <button type="button" class="seg {{st0.cls}}" onClick="{{go0}}" aria-pressed="{{st0.on}}">1 · Routine</button>
+      <button type="button" class="seg {{st1.cls}}" onClick="{{go1}}" aria-pressed="{{st1.on}}">2 · Emergency</button>
+      <button type="button" class="seg {{st2.cls}}" onClick="{{go2}}" aria-pressed="{{st2.on}}">3 · Proposed</button>
+      <button type="button" class="seg {{st3.cls}}" onClick="{{go3}}" aria-pressed="{{st3.on}}">4 · Applied</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap" role="group" aria-label="Preview outcome">
+      <button type="button" class="seg {{vOk.cls}}" onClick="{{setOk}}" aria-pressed="{{vOk.on}}">Feasible</button>
+      <button type="button" class="seg {{vStale.cls}}" onClick="{{setStale}}" aria-pressed="{{vStale.on}}">Stale preview</button>
+      <button type="button" class="seg {{vInf.cls}}" onClick="{{setInf}}" aria-pressed="{{vInf.on}}">Infeasible</button>
+    </div>
+    <button type="button" class="btn btnP" style="margin-left:auto" onClick="{{play}}">{{playLabel}}</button>
+  </section>
+
+  <!-- STATUS BAND -->
+  <section aria-live="polite" class="{{band.cls}}" style="border-radius:18px;padding:16px 22px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;background-color:{{band.bg}};border:1px solid {{band.border}};color:{{band.fg}};transition:background-color .6s ease,border-color .6s ease,color .6s ease">
+    <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="{{band.dash}}"/><path d="{{band.icon}}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div style="display:flex;flex-direction:column;gap:2px;flex:1 1 360px;min-width:0">
+      <div class="kick">{{band.kick}}</div>
+      <div style="font-family:'Merriweather',Georgia,serif;font-size:30px;line-height:1.1">{{band.title}}</div>
+      <div style="font-size:14px;opacity:.92">{{band.sub}}</div>
+    </div>
+    <sc-if value="{{band.showCta}}" hint-placeholder-val="{{ false }}">
+      <button type="button" class="btn btnO" onClick="{{previewOk}}">Preview a plan</button>
+    </sc-if>
+  </section>
+
+  <!-- MAIN -->
+  <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
+
+    <!-- RING -->
+    <section class="glass" style="flex:1 1 620px;min-width:0;padding:20px 20px 18px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden" aria-label="Fleet topology">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+        <h2 style="margin:0;font-family:'Merriweather',Georgia,serif;font-weight:400;font-size:32px">Fleet equilibrium</h2>
+        <span class="mono" style="font-size:11px;color:#A9C6F2">Ring order is simulated · not geography · arcs are job moves</span>
+      </div>
+
+      <div style="position:relative;width:100%;max-width:760px;aspect-ratio:1/1;margin:0 auto">
+        <svg viewBox="0 0 720 720" width="100%" height="100%" style="position:absolute;inset:0" aria-hidden="true">
+          <defs>
+            <radialGradient id="orbC" cx="50%" cy="38%" r="62%"><stop offset="0%" stop-color="#EFFFFF"/><stop offset="50%" stop-color="#00D3FB"/><stop offset="100%" stop-color="#003C9E"/></radialGradient>
+            <radialGradient id="orbA" cx="50%" cy="38%" r="62%"><stop offset="0%" stop-color="#FFF1E3"/><stop offset="50%" stop-color="#FF8A3D"/><stop offset="100%" stop-color="#7A2E00"/></radialGradient>
+            <radialGradient id="halo" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="{{haloColor}}" stop-opacity=".45"/><stop offset="100%" stop-color="{{haloColor}}" stop-opacity="0"/></radialGradient>
+          </defs>
+          <g class="contour" fill="none" stroke="#123E86" stroke-width="1">
+            <ellipse cx="360" cy="360" rx="350" ry="300" transform="rotate(-14 360 360)"/>
+            <ellipse cx="360" cy="360" rx="310" ry="262" transform="rotate(-14 360 360)"/>
+            <ellipse cx="360" cy="360" rx="270" ry="224" transform="rotate(-14 360 360)"/>
+          </g>
+          <circle cx="360" cy="360" r="240" fill="none" stroke="#14459A" stroke-width="1.2"/>
+          <circle cx="360" cy="360" r="170" fill="none" stroke="#2F6BC8" stroke-width="1" style="stroke-dasharray:2 8" class="spin"/>
+          <circle cx="360" cy="360" r="112" fill="none" stroke="#14459A" stroke-width="1" style="stroke-dasharray:1 7" class="spinR"/>
+          <circle cx="360" cy="360" r="150" fill="url(#halo)"/>
+          <circle cx="360" cy="360" r="62" fill="url(#orbC)" class="breathe" style="opacity:{{orbCalmOp}};transition:opacity .8s ease"/>
+          <circle cx="360" cy="360" r="62" fill="url(#orbA)" class="breathe" style="opacity:{{orbAlertOp}};transition:opacity .8s ease"/>
+          <sc-if value="{{loading}}" hint-placeholder-val="{{ false }}">
+            <circle cx="360" cy="360" r="120" fill="none" stroke="#8FEBFF" stroke-width="2" class="scanR"/>
+            <circle cx="360" cy="360" r="120" fill="none" stroke="#8FEBFF" stroke-width="2" class="scanR" style="animation-delay:.5s"/>
+            <circle cx="360" cy="360" r="120" fill="none" stroke="#8FEBFF" stroke-width="2" class="scanR" style="animation-delay:1s"/>
+          </sc-if>
+
+          <sc-for list="{{arcs}}" as="a" hint-placeholder-count="2">
+            <path d="{{a.d}}" fill="none" stroke="{{a.stroke}}" stroke-width="{{a.w}}" stroke-linecap="round" pathLength="1" class="{{a.cls}}" style="stroke-dasharray:{{a.dash}};opacity:{{a.op}};transition:opacity .5s ease,stroke-width .3s ease"/>
+          </sc-for>
+
+          <sc-for list="{{nodes}}" as="n" hint-placeholder-count="10">
+            <g>
+              <sc-if value="{{n.ping}}" hint-placeholder-val="{{ false }}">
+                <circle cx="{{n.x}}" cy="{{n.y}}" r="34" fill="none" stroke="#FF8A3D" stroke-width="3" class="pingN"/>
+              </sc-if>
+              <sc-if value="{{n.land}}" hint-placeholder-val="{{ false }}">
+                <circle cx="{{n.x}}" cy="{{n.y}}" r="34" fill="none" stroke="#FFFFFF" stroke-width="3" class="land"/>
+              </sc-if>
+              <circle cx="{{n.x}}" cy="{{n.y}}" r="34" fill="#001638" stroke="{{n.sel}}" stroke-width="2"/>
+              <circle cx="{{n.x}}" cy="{{n.y}}" r="26" fill="none" stroke="#0F3A80" stroke-width="6"/>
+              <circle cx="{{n.x}}" cy="{{n.y}}" r="26" fill="none" stroke="{{n.arc}}" stroke-width="6" stroke-linecap="round" transform="rotate(-90 {{n.x}} {{n.y}})" style="stroke-dasharray:{{n.dash}} 200;transition:stroke-dasharray .9s cubic-bezier(.2,.8,.2,1),stroke .5s ease"/>
+              <sc-if value="{{n.hasGhost}}" hint-placeholder-val="{{ false }}">
+                <circle cx="{{n.x}}" cy="{{n.y}}" r="31" fill="none" stroke="#8FEBFF" stroke-width="3" stroke-linecap="round" transform="rotate(-90 {{n.x}} {{n.y}})" style="stroke-dasharray:{{n.gdash}};opacity:{{n.gop}}"/>
+              </sc-if>
+              <text x="{{n.x}}" y="{{n.ty}}" text-anchor="middle" font-family="Raleway, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">{{n.utilText}}</text>
+            </g>
+          </sc-for>
+
+          <sc-for list="{{drops}}" as="d" hint-placeholder-count="1">
+            <circle r="9" fill="#FFFFFF" class="drop" style="offset-path:path('{{d.d}}');offset-rotate:0deg;filter:drop-shadow(0 0 8px #8FEBFF)"/>
+          </sc-for>
+        </svg>
+
+        <!-- Orb center readout -->
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;text-align:center;pointer-events:none;color:#00122E">
+          <div class="kick" style="font-size:9.5px;color:#00122E">Fleet water</div>
+          <div style="font-family:'Merriweather',Georgia,serif;font-size:40px;line-height:1;color:#00122E">{{fleetNow}}</div>
+          <div class="mono" style="font-size:10px;color:#00122E;font-weight:700">{{fleetSub}}</div>
+        </div>
+
+        <!-- Arc chips -->
+        <sc-for list="{{chips}}" as="c" hint-placeholder-count="2">
+          <div class="pop" style="position:absolute;left:{{c.left}}%;top:{{c.top}}%;transform:translate(-50%,-50%);pointer-events:none;padding:5px 10px;border-radius:999px;font-family:'Raleway',system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;font-size:11px;font-weight:700;white-space:nowrap;background:{{c.bg}};color:{{c.fg}};border:2px {{c.bstyle}} {{c.bc}}">{{c.text}}</div>
+        </sc-for>
+
+        <!-- Node buttons + labels -->
+        <sc-for list="{{nodes}}" as="n" hint-placeholder-count="10">
+          <button type="button" class="nodeBtn" onClick="{{n.pick}}" aria-label="{{n.aria}}" aria-pressed="{{n.pressed}}" style="position:absolute;left:{{n.left}}%;top:{{n.top}}%;width:76px;height:76px;transform:translate(-50%,-50%);border-radius:50%;background:transparent;border:0;cursor:pointer;padding:0">
+            <span style="position:absolute;left:50%;{{n.labelPos}};transform:translateX(-50%);width:132px;text-align:center;pointer-events:none;display:flex;flex-direction:column;gap:1px">
+              <span style="font-size:12.5px;font-weight:700;color:#FFFFFF;text-shadow:0 1px 6px #00122E">{{n.short}}</span>
+              <span class="mono" style="font-size:10.5px;color:{{n.subColor}};text-shadow:0 1px 6px #00122E">{{n.sub}}</span>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+
+      <!-- Legend -->
+      <div style="display:flex;flex-wrap:wrap;gap:10px 22px;justify-content:center;font-size:12.5px;color:#D0E0FA" aria-label="Legend">
+        <span style="display:inline-flex;gap:8px;align-items:center"><svg width="34" height="10" aria-hidden="true"><line x1="2" y1="5" x2="32" y2="5" stroke="#8FEBFF" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/></svg><strong style="color:#fff">Proposed</strong> dashed, hollow</span>
+        <span style="display:inline-flex;gap:8px;align-items:center"><svg width="34" height="10" aria-hidden="true"><line x1="2" y1="5" x2="32" y2="5" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/></svg><strong style="color:#fff">Applied</strong> solid, filled</span>
+        <span style="display:inline-flex;gap:8px;align-items:center"><svg width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="#FF8A3D" stroke-width="3"/></svg><strong style="color:#fff">Over cap</strong> orange ring</span>
+        <span style="display:inline-flex;gap:8px;align-items:center"><svg width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="#00D3FB" stroke-width="3"/></svg><strong style="color:#fff">GPU use</strong> arc length</span>
+      </div>
+
+      <!-- Site drawer -->
+      <sc-if value="{{drawer.open}}" hint-placeholder-val="{{ false }}">
+        <aside class="paper rise" style="padding:18px 20px;display:flex;flex-direction:column;gap:12px" aria-label="Site details">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+            <div>
+              <div class="kick" style="color:#3B5280">Site detail · simulated</div>
+              <div style="font-family:'Merriweather',Georgia,serif;font-size:30px;line-height:1.1">{{drawer.name}}</div>
+            </div>
+            <button type="button" class="btn btnD" onClick="{{closeDrawer}}" aria-label="Close site details">Close</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px">
+            <div><div class="lbl">GPU utilization</div><div class="mono" style="font-size:22px;font-weight:700">{{drawer.util}}</div></div>
+            <div><div class="lbl">Water withdrawal</div><div class="mono" style="font-size:22px;font-weight:700">{{drawer.water}}</div></div>
+            <div><div class="lbl">Water cap</div><div class="mono" style="font-size:22px;font-weight:700">{{drawer.cap}}</div></div>
+          </div>
+          <div style="font-size:13.5px;font-weight:600;color:{{drawer.statusColor}}">{{drawer.status}}</div>
+          <div style="font-size:13px;color:#3B5280">Jobs here: <strong style="color:#0A1630">{{drawer.jobs}}</strong></div>
+        </aside>
+      </sc-if>
+    </section>
+
+    <!-- RIGHT COLUMN -->
+    <div style="flex:1 1 440px;min-width:0;display:flex;flex-direction:column;gap:20px">
+
+      <!-- Command -->
+      <section class="paper" style="padding:20px;display:flex;flex-direction:column;gap:14px" aria-label="Scheduling request">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+          <h2 style="margin:0;font-family:'Merriweather',Georgia,serif;font-weight:400;font-size:28px">Ask for a new schedule</h2>
+          <div role="group" aria-label="Mode" style="display:flex;gap:4px;padding:4px;border-radius:12px;background:#DAE4F5">
+            <button type="button" class="seg" onClick="{{modeRoutine}}" aria-pressed="{{routineOn}}" style="{{routineStyle}}">Routine</button>
+            <button type="button" class="seg" onClick="{{modeEmergency}}" aria-pressed="{{emergencyOn}}" style="{{emergencyStyle}}">Emergency</button>
+          </div>
+        </div>
+
+        <sc-if value="{{emergencyOn}}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px">
+            <div style="grid-column:1/-1"><label class="lbl" for="site">Restricted site</label>
+              <select id="site" class="fld" value="{{siteVal}}" onChange="{{onSite}}">
+                <option>Alpha Mesa DC</option><option>Beta River DC</option><option>Gamma Ridge DC</option>
+              </select></div>
+            <div><label class="lbl" for="cap">Cap (L/h)</label><input id="cap" class="fld mono" inputmode="numeric" value="{{capVal}}" onChange="{{onCap}}"></div>
+            <div><label class="lbl" for="st">Start (UTC)</label><input id="st" class="fld mono" value="{{startVal}}" onChange="{{onStart}}"></div>
+            <div><label class="lbl" for="en">End (UTC)</label><input id="en" class="fld mono" value="{{endVal}}" onChange="{{onEnd}}"></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{routineOn}}" hint-placeholder-val="{{ false }}">
+          <div><label class="lbl" for="bud">Additional cost budget (USD)</label><input id="bud" class="fld mono" inputmode="decimal" value="{{budgetVal}}" onChange="{{onBudget}}"></div>
+        </sc-if>
+
+        <div><label class="lbl" for="nl">Instruction for Gemini (optional)</label>
+          <textarea id="nl" rows="3" class="fld" style="padding:10px 12px;resize:vertical;line-height:1.4" value="{{instrVal}}" onChange="{{onInstr}}"></textarea></div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button type="button" class="btn btnP" style="background:#0042AC;color:#fff" onClick="{{previewOk}}" disabled="{{loading}}">{{previewLabel}}</button>
+          <span style="font-size:12.5px;color:#3B5280;flex:1 1 200px">Nothing changes until you apply. Preview calls the solver; Gemini only explains the result.</span>
+        </div>
+      </section>
+
+      <!-- Gemini + comparison -->
+      <section class="paper" style="padding:20px;display:flex;flex-direction:column;gap:16px;border:2px {{cmp.bstyle}} {{cmp.bcolor}}" aria-label="Proposed schedule" aria-live="polite">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;gap:10px;align-items:center">
+            <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 2 L15.4 10.6 L24 13 L15.4 15.4 L13 24 L10.6 15.4 L2 13 L10.6 10.6Z" fill="#0042AC"/></svg>
+            <h2 style="margin:0;font-family:'Merriweather',Georgia,serif;font-weight:400;font-size:28px">Gemini explains the plan</h2>
+          </div>
+          <span class="mono" style="font-size:11px;font-weight:700;padding:6px 10px;border-radius:999px;background:{{cmp.tagBg}};color:{{cmp.tagFg}};border:2px {{cmp.bstyle}} {{cmp.bcolor}}">{{cmp.tag}}</span>
+        </div>
+
+        <sc-if value="{{cmp.empty}}" hint-placeholder-val="{{ true }}">
+          <div style="padding:22px;border:1px dashed #9DB1D6;border-radius:14px;color:#3B5280;font-size:14px;line-height:1.5">{{cmp.emptyText}}</div>
+        </sc-if>
+
+        <sc-if value="{{loading}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:10px" aria-busy="true">
+            <div class="mono" style="font-size:12px;color:#0042AC;font-weight:700">Gemini read your request · SciPy solver running…</div>
+            <div class="shim" style="height:16px"></div><div class="shim" style="height:16px;width:88%"></div><div class="shim" style="height:16px;width:64%"></div>
+            <div class="shim" style="height:120px;margin-top:6px"></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{cmp.show}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <sc-if value="{{cmp.staleBanner}}" hint-placeholder-val="{{ false }}">
+              <div class="stripeBand" style="padding:12px 14px;border-radius:12px;border:2px solid #B93D00;background-color:#FFF1E6;color:#5A1E00;font-size:13.5px;line-height:1.45"><strong>This preview is out of date.</strong> Job JOB-021 was submitted after you previewed (revision 3 to 4). Apply is locked. Run the preview again to get a plan that matches the queue.</div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column;gap:10px;opacity:{{cmp.textOp}}">
+              <sc-for list="{{cmp.lines}}" as="l" hint-placeholder-count="3">
+                <p class="rise" style="margin:0;font-size:15.5px;line-height:1.5;animation-delay:{{l.delay}}s">{{l.text}}</p>
+              </sc-for>
+              <sc-if value="{{whyOn}}" hint-placeholder-val="{{ false }}">
+                <p class="rise" style="margin:0;font-size:14px;line-height:1.5;padding:10px 12px;border-radius:10px;background:#E4ECFA">Gamma Ridge would also fit JOB-014, but its 20:00 GPU capacity is 16 and JOB-011 already needs 4 of them. Beta River leaves 4 GPUs spare and keeps Gamma under its 420 L/h cap.</p>
+              </sc-if>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="chip" onClick="{{toggleFocus}}">{{focusLabel}}</button>
+                <button type="button" class="chip" onClick="{{toggleWhy}}">Why not Gamma Ridge?</button>
+                <button type="button" class="chip" onClick="{{rerunLow}}">What if budget is $20?</button>
+              </div>
+              <div style="font-size:11.5px;color:#3B5280">Gemini wrote this from the solver's returned plan. The numbers below are the solver's.</div>
+            </div>
+
+            <sc-if value="{{cmp.rows}}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:2px;opacity:{{cmp.textOp}}" role="table" aria-label="Before and after">
+                <sc-for list="{{cmp.metrics}}" as="m" hint-placeholder-count="4">
+                  <div role="row" style="display:grid;grid-template-columns:minmax(110px,1.1fr) minmax(0,1fr) 22px minmax(0,1.2fr);gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #CFDCF2">
+                    <div role="cell" style="font-size:13px;font-weight:600;color:#3B5280">{{m.label}}</div>
+                    <div role="cell" class="mono" style="font-size:14px;color:#3B5280">{{m.before}}</div>
+                    <div role="cell" aria-hidden="true" style="color:#0042AC;font-weight:700">→</div>
+                    <div role="cell" style="display:flex;flex-direction:column;gap:2px">
+                      <span class="mono" style="font-size:16px;font-weight:700;color:{{m.color}}">{{m.after}}</span>
+                      <span class="mono" style="font-size:11px;color:{{m.dcolor}};font-weight:600">{{m.delta}}</span>
+                    </div>
+                  </div>
+                </sc-for>
+                <div style="padding:12px 0 2px;display:flex;flex-direction:column;gap:6px">
+                  <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:#3B5280"><span>Additional cost budget</span><span class="mono">{{cmp.budgetText}}</span></div>
+                  <div style="height:10px;border-radius:6px;background:#CFDCF2;overflow:hidden"><div style="height:100%;width:{{cmp.budgetPct}}%;background:#0042AC;border-radius:6px;transition:width .9s cubic-bezier(.2,.8,.2,1)"></div></div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{cmp.infeasible}}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="padding:12px 14px;border-radius:12px;border:2px solid #B93D00;background:#FFF1E6;color:#5A1E00;font-size:14px;line-height:1.45"><strong>No feasible plan.</strong> {{infText}}</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button type="button" class="chip" onClick="{{previewOk}}">Raise budget to $40</button>
+                  <button type="button" class="chip" onClick="{{previewOk}}">Relax cap to 340 L/h</button>
+                  <button type="button" class="chip" onClick="{{discard}}">Back to emergency</button>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{cmp.actions}}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button type="button" class="btn btnP" style="background:#0042AC;color:#fff" onClick="{{apply}}" disabled="{{cmp.applyOff}}">{{cmp.applyLabel}}</button>
+                <button type="button" class="btn btnD" onClick="{{discard}}">Discard preview</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{cmp.stale}}" hint-placeholder-val="{{ false }}">
+              <button type="button" class="btn btnD" onClick="{{previewOk}}">Re-run preview</button>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{toast}}" hint-placeholder-val="{{ false }}">
+          <div class="pop" role="status" style="display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:12px;background:#00122E;color:#EEF4FF;border:2px solid #FFFFFF">
+            <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="#FFFFFF"/><path d="M6 11.5 L9.5 15 L16 7.5" fill="none" stroke="#00122E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div style="font-size:13.5px;line-height:1.4"><strong>Plan applied · revision 4.</strong> The portal now shows JOB-014 on Beta River DC.</div>
+          </div>
+        </sc-if>
+      </section>
+    </div>
+  </div>
+
+  <!-- LOWER BAND -->
+  <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">
+
+    <!-- Chart -->
+    <section class="glass" style="flex:1.3 1 560px;min-width:0;padding:20px;display:flex;flex-direction:column;gap:12px" aria-label="Hourly water chart">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px 20px;align-items:baseline">
+        <h2 style="margin:0;font-family:'Merriweather',Georgia,serif;font-weight:400;font-size:28px">Alpha Mesa · water by hour</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:#D0E0FA">
+          <span style="display:inline-flex;gap:7px;align-items:center"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" stroke="#00D3FB" stroke-width="3" stroke-linecap="round"/></svg>Current</span>
+          <span style="display:inline-flex;gap:7px;align-items:center"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" stroke="#FFFFFF" stroke-width="3" stroke-dasharray="5 4"/></svg>Proposed / applied</span>
+          <span style="display:inline-flex;gap:7px;align-items:center"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" stroke="#FF8A3D" stroke-width="3"/></svg>Water cap</span>
+        </div>
+      </div>
+      <svg viewBox="0 0 800 270" width="100%" role="img" aria-label="{{chartAria}}" style="display:block">
+        <defs>
+          <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="rgba(255,138,61,.08)"/><line x1="0" y1="0" x2="0" y2="8" stroke="rgba(255,138,61,.55)" stroke-width="2"/></pattern>
+          <clipPath id="wipe"><rect x="0" y="0" height="270" style="width:{{wipeW}}px;transition:width 1.3s cubic-bezier(.3,.7,.2,1)"/></clipPath>
+        </defs>
+        <g stroke="#14459A" stroke-width="1">
+          <line x1="64" x2="776" y1="232" y2="232"/><line x1="64" x2="776" y1="165.3" y2="165.3"/><line x1="64" x2="776" y1="98.7" y2="98.7"/><line x1="64" x2="776" y1="32" y2="32"/>
+        </g>
+        <g font-family="Raleway, sans-serif" font-size="11" fill="#A9C6F2" text-anchor="end">
+          <text x="56" y="236">0</text><text x="56" y="169">200</text><text x="56" y="103">400</text><text x="56" y="36">600</text>
+        </g>
+        <g font-family="Raleway, sans-serif" font-size="11" fill="#A9C6F2" text-anchor="middle">
+          <sc-for list="{{hours}}" as="hr" hint-placeholder-count="12"><text x="{{hr.x}}" y="254">{{hr.t}}</text></sc-for>
+        </g>
+        <rect x="{{winX}}" y="28" width="{{winW}}" height="206" fill="url(#hatch)" class="lineT" style="opacity:{{emOp}}"/>
+        <path d="{{violD}}" fill="rgba(255,138,61,.55)" class="lineT" style="opacity:{{violOp}}"/>
+        <path d="{{capFlatD}}" fill="none" stroke="#FF8A3D" stroke-width="2.5" class="lineT" style="opacity:{{capFlatOp}}"/>
+        <path d="{{capStepD}}" fill="none" stroke="#FF8A3D" stroke-width="3" class="lineT" style="opacity:{{capStepOp}}"/>
+        <path d="{{curD}}" fill="none" stroke="#00D3FB" stroke-width="3" stroke-linejoin="round" class="lineT" style="opacity:{{curOp}}"/>
+        <g clip-path="url(#wipe)">
+          <path d="{{propD}}" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round" class="lineT" style="stroke-dasharray:{{propDash}};opacity:{{propOp}}"/>
+          <sc-for list="{{propDots}}" as="p" hint-placeholder-count="6">
+            <circle cx="{{p.x}}" cy="{{p.y}}" r="5" stroke="#FFFFFF" stroke-width="2.5" class="lineT" style="fill:{{dotFill}};opacity:{{propOp}}"/>
+          </sc-for>
+        </g>
+        <g style="transform:translateX({{nowX}}px);transition:transform .7s cubic-bezier(.3,.7,.2,1)">
+          <line x1="0" x2="0" y1="24" y2="236" stroke="#FFD27A" stroke-width="1.5" stroke-dasharray="3 4"/>
+          <text x="6" y="22" font-family="Raleway, sans-serif" font-size="11" fill="#FFD27A" font-weight="700">SIM NOW</text>
+        </g>
+        <text x="{{capLblX}}" y="{{capLblY}}" font-family="Raleway, sans-serif" font-size="11" fill="#FF9A57" font-weight="700" text-anchor="middle" class="lineT" style="opacity:{{emOp}}">TEMP CAP 300 L/H</text>
+      </svg>
+      <div class="mono" style="font-size:11px;color:#A9C6F2">Hours in UTC · L/h per hour · design mock data, shaped like <span style="color:#fff">/api/sites</span> hourly profiles</div>
+    </section>
+
+    <!-- Queue -->
+    <section class="paper" style="flex:1 1 560px;min-width:0;padding:20px;display:flex;flex-direction:column;gap:12px" aria-label="Shared workload queue">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <h2 style="margin:0;font-family:'Merriweather',Georgia,serif;font-weight:400;font-size:28px">Shared queue</h2>
+        <span class="mono" style="font-size:11px;color:#3B5280">{{queueNote}}</span>
+      </div>
+      <div style="overflow-x:auto;border-radius:12px">
+        <table style="border-collapse:collapse;width:100%;min-width:640px">
+          <thead><tr><th scope="col">Job</th><th scope="col">GPUs</th><th scope="col">Status</th><th scope="col">Site</th><th scope="col">Start</th><th scope="col">Finish / deadline</th></tr></thead>
+          <tbody>
+            <sc-for list="{{jobs}}" as="j" hint-placeholder-count="7">
+              <tr style="background:{{j.rowBg}}">
+                <td class="mono" style="font-weight:700">{{j.id}}</td>
+                <td class="mono">{{j.gpu}}</td>
+                <td><span style="display:inline-flex;align-items:center;gap:8px;font-weight:600"><span aria-hidden="true" style="{{j.dot}}"></span>{{j.status}}</span></td>
+                <td>
+                  <sc-if value="{{j.proposed}}" hint-placeholder-val="{{ false }}"><span class="mono" style="font-size:12px;font-weight:700;padding:4px 8px;border-radius:999px;border:2px dashed #0042AC;color:#003180;background:#fff">○ {{j.siteText}}</span></sc-if>
+                  <sc-if value="{{j.applied}}" hint-placeholder-val="{{ false }}"><span class="mono pop" style="font-size:12px;font-weight:700;padding:4px 8px;border-radius:999px;border:2px solid #00122E;color:#fff;background:#00122E">● {{j.siteText}} ✓</span></sc-if>
+                  <sc-if value="{{j.plain}}" hint-placeholder-val="{{ true }}"><span>{{j.siteText}}</span></sc-if>
+                </td>
+                <td class="mono">{{j.start}}</td>
+                <td class="mono"><span style="color:#0A1630">{{j.finish}}</span> <span style="color:#3B5280">/ {{j.dl}}</span> <span style="color:#003180;font-weight:700">{{j.slack}}</span></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+        <div class="kick" style="color:#3B5280">Affected-site compliance</div>
+        <sc-for list="{{compliance}}" as="c" hint-placeholder-count="3">
+          <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:12px;background:#E4ECFA;flex-wrap:wrap">
+            <span style="font-weight:700;font-size:13.5px">{{c.site}}</span>
+            <span class="mono" style="font-size:12px;color:#3B5280">{{c.detail}}</span>
+            <span style="font-size:12.5px;font-weight:700;color:{{c.color}}">{{c.icon}} {{c.text}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+
+  <div class="mono" style="font-size:11px;color:#A9C6F2;text-align:center">Design prototype · every figure is labeled mock data in the mockup; in the build it comes from /api/sites, /api/jobs, /api/demo and /api/reallocation/*. Unfinished endpoints show honest unavailable states.</div>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      stage: 0, h: 0, variant: 'ok', loading: false, mode: 'emergency', sel: null,
+      focus: true, why: false, playing: false, toast: false,
+      site: 'Alpha Mesa DC', cap: '300', start: '20:00', end: '02:00', budget: '40',
+      instr: 'Alpha Mesa has a water restriction tonight. Keep it under 300 L/h from 8 p.m. to 2 a.m. and do not miss any deadlines.'
+    };
+    this.timers = [];
+  }
+  componentWillUnmount() { this.clear(); }
+  clear() { this.timers.forEach(t => clearTimeout(t)); this.timers = []; }
+  later(fn, ms) { this.timers.push(setTimeout(fn, ms)); }
+  toStage(n, extra) {
+    this.setState(Object.assign({ stage: n, h: n === 0 ? 0 : Math.max(this.state.h, 1), loading: false, toast: n === 3, why: false }, extra || {}));
+  }
+  runPreview(variant) {
+    this.clear();
+    if (this.state.stage < 1) { this.setState({ stage: 1, h: Math.max(this.state.h, 1) }); }
+    this.setState({ loading: true, toast: false, why: false });
+    this.later(() => this.setState({ loading: false, stage: 2, variant: variant || 'ok' }), 1700);
+  }
+
+  renderVals() {
+    const S = this.state;
+    const s = S.stage, h = S.h, v = S.variant;
+    const emerg = s >= 1;
+    const prop = s === 2 && !S.loading;
+    const proposedShown = prop && v !== 'infeasible';
+    const applied = s === 3;
+    const stale = prop && v === 'stale';
+    const infeasible = prop && v === 'infeasible';
+
+    // ---------- sites ----------
+    const base = [
+      { n: 'Alpha Mesa DC', short: 'Alpha Mesa', u: 78, w: 470, c: 500 },
+      { n: 'Gamma Ridge DC', short: 'Gamma Ridge', u: 54, w: 262, c: 420, gu: 63, gw: 289 },
+      { n: 'Zeta Prairie DC', short: 'Zeta Prairie', u: 66, w: 344, c: 480 },
+      { n: 'Beta River DC', short: 'Beta River', u: 61, w: 318, c: 400, gu: 88, gw: 389 },
+      { n: 'Theta Harbor DC', short: 'Theta Harbor', u: 83, w: 412, c: 460 },
+      { n: 'Iota Canyon DC', short: 'Iota Canyon', u: 29, w: 133, c: 300 },
+      { n: 'Epsilon Coast DC', short: 'Epsilon Coast', u: 38, w: 174, c: 380 },
+      { n: 'Delta Basin DC', short: 'Delta Basin', u: 71, w: 391, c: 450 },
+      { n: 'Eta Summit DC', short: 'Eta Summit', u: 45, w: 205, c: 330 },
+      { n: 'Kappa Vale DC', short: 'Kappa Vale', u: 58, w: 287, c: 410 }
+    ];
+    const pos = i => { const a = (-90 + i * 36) * Math.PI / 180; return [360 + 240 * Math.cos(a), 360 + 240 * Math.sin(a)]; };
+    const fmt = x => x.toLocaleString('en-US');
+    const sites = base.map((b, i) => {
+      const o = Object.assign({}, b);
+      if (i === 0 && emerg) o.c = 300;
+      if (i === 0 && applied) { o.u = 52; o.w = 292; }
+      if (i === 1 && applied) { o.u = b.gu; o.w = b.gw; }
+      if (i === 3 && applied) { o.u = b.gu; o.w = b.gw; }
+      return o;
+    });
+    const nodes = sites.map((o, i) => {
+      const p = pos(i), over = o.w > o.c;
+      const top = p[1] < 360;
+      const ghost = proposedShown && (i === 0 || i === 1 || i === 3);
+      const gu = i === 0 ? 52 : base[i].gu;
+      const gw = i === 0 ? 292 : base[i].gw;
+      let sub = fmt(o.w) + ' / ' + fmt(o.c) + ' L/h';
+      if (ghost) sub = fmt(o.w) + ' → ' + fmt(gw) + ' L/h';
+      if (over) sub = fmt(o.w) + ' / ' + fmt(o.c) + ' OVER';
+      const isSel = S.sel === i;
+      const aria = o.n + ': ' + o.u + ' percent GPU use, ' + o.w + ' liters per hour against a cap of ' + o.c + (over ? ', over cap' : ', within cap') + '. Simulated.';
+      return {
+        x: p[0].toFixed(1), y: p[1].toFixed(1), ty: (p[1] + 4.5).toFixed(1),
+        left: (p[0] / 7.2).toFixed(2), top: (p[1] / 7.2).toFixed(2),
+        ping: i === 0 && (s === 1 || s === 2) && !S.loading,
+        land: applied && (i === 3 || i === 1),
+        sel: isSel ? '#FFD27A' : (over ? '#FF8A3D' : '#14459A'),
+        arc: over ? '#FF8A3D' : '#00D3FB',
+        dash: (o.u / 100 * 163.4).toFixed(1),
+        hasGhost: ghost,
+        gdash: ghost ? ((gu / 100 * 194.8).toFixed(1) + ' 400') : '0 400',
+        gop: 1,
+        utilText: o.u + '%',
+        short: o.short, sub, subColor: over ? '#FF9A57' : '#A9C6F2',
+        labelPos: top ? 'bottom:100%;margin-bottom:6px' : 'top:100%;margin-top:6px',
+        aria, pressed: isSel ? 'true' : 'false',
+        pick: () => this.setState({ sel: S.sel === i ? null : i })
+      };
+    });
+
+    const fleetBase = 2996, fleetProp = 2916;
+    const fleetNow = applied ? fmt(fleetProp) : fmt(fleetBase);
+    const fleetSub = applied ? '−80 L/h · −2.7%' : (proposedShown ? 'proposed ' + fmt(fleetProp) : 'L/h · now');
+
+    // ---------- arcs ----------
+    const curve = (i, j) => {
+      const a = pos(i), b = pos(j);
+      const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+      const cx = 360 + (mx - 360) * 0.22, cy = 360 + (my - 360) * 0.22;
+      return { d: 'M ' + a[0].toFixed(1) + ' ' + a[1].toFixed(1) + ' Q ' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ' ' + b[0].toFixed(1) + ' ' + b[1].toFixed(1),
+        mid: [(a[0] + 2 * cx + b[0]) / 4, (a[1] + 2 * cy + b[1]) / 4] };
+    };
+    const moves = [{ id: 'JOB-014', from: 0, to: 3 }, { id: 'JOB-011', from: 0, to: 1 }];
+    const arcs = [], chips = [], drops = [];
+    moves.forEach((m, k) => {
+      const c = curve(m.from, m.to);
+      const isFocus = S.focus && k === 0;
+      if (proposedShown) {
+        arcs.push({ d: c.d, stroke: '#8FEBFF', w: isFocus ? 4.5 : 2.5, cls: stale ? '' : 'dashflow', dash: '0.03 0.025', op: stale ? 0.35 : 1 });
+        chips.push({ left: (c.mid[0] / 7.2).toFixed(1), top: (c.mid[1] / 7.2).toFixed(1), text: '○ ' + m.id + ' · PROPOSED' + (stale ? ' · STALE' : ''), bg: '#00122E', fg: '#8FEBFF', bc: '#8FEBFF', bstyle: 'dashed' });
+      }
+      if (infeasible && k === 0) {
+        arcs.push({ d: c.d, stroke: '#FF8A3D', w: 3, cls: '', dash: '0.45 1', op: 1 });
+        chips.push({ left: (c.mid[0] / 7.2).toFixed(1), top: (c.mid[1] / 7.2).toFixed(1), text: '✕ no site fits ' + m.id, bg: '#2A0F00', fg: '#FFB27A', bc: '#FF8A3D', bstyle: 'solid' });
+      }
+      if (applied) {
+        arcs.push({ d: c.d, stroke: '#FFFFFF', w: 2.5, cls: '', dash: '1 0', op: 0.9 });
+        chips.push({ left: (c.mid[0] / 7.2).toFixed(1), top: (c.mid[1] / 7.2).toFixed(1), text: '● ' + m.id + ' · APPLIED ✓', bg: '#FFFFFF', fg: '#00122E', bc: '#FFFFFF', bstyle: 'solid' });
+        drops.push({ d: c.d });
+      }
+    });
+
+    // ---------- clock ----------
+    const hh = off => String((18 + off) % 24).padStart(2, '0') + ':00';
+    const clockText = '2026-03-15 ' + hh(h) + ' UTC'.replace('2026-03-15', '') ;
+    const dayText = (18 + h) >= 24 ? '2026-03-16' : '2026-03-15';
+    const clockFull = dayText + ' ' + hh(h) + ' UTC';
+
+    // ---------- band ----------
+    let band;
+    if (!emerg) band = { cls: '', bg: 'rgba(0,211,251,.08)', border: '#14459A', fg: '#EEF4FF', kick: 'Routine · all sites within caps', title: 'Fleet is balanced.', sub: 'Ten simulated sites, 14 jobs, zero cap breaches. Ask for a cheaper schedule or wait for a restriction.', dash: '3 4', icon: 'M8 14 L12.5 18.5 L20 10', showCta: false };
+    else if (s === 1) band = { cls: 'stripeBand', bg: '#2B1203', border: '#FF8A3D', fg: '#FFE7D3', kick: 'Emergency · Alpha Mesa DC · simulated', title: 'Water restriction: 300 L/h from 20:00 to 02:00 UTC', sub: 'Alpha is projected at 470 L/h. Six hours are over the cap and three queued jobs run through them.', dash: '0', icon: 'M14 7 L14 15 M14 19.5 L14 19.6', showCta: true };
+    else if (s === 2 && v === 'stale') band = { cls: 'stripeBand', bg: '#2B1203', border: '#FF8A3D', fg: '#FFE7D3', kick: 'Stale preview', title: 'The queue changed after this plan was made.', sub: 'Revision 3 to 4. Apply is locked until you preview again.', dash: '3 4', icon: 'M14 7 L14 15 M14 19.5 L14 19.6', showCta: false };
+    else if (s === 2 && v === 'infeasible') band = { cls: 'stripeBand', bg: '#2B1203', border: '#FF8A3D', fg: '#FFE7D3', kick: 'Infeasible', title: 'No schedule satisfies every constraint.', sub: 'The solver found no assignment that respects the cap, GPU capacity and deadlines within budget.', dash: '3 4', icon: 'M9 9 L19 19 M19 9 L9 19', showCta: false };
+    else if (s === 2) band = { cls: '', bg: 'rgba(143,235,255,.12)', border: '#8FEBFF', fg: '#EEF4FF', kick: 'Proposed · not applied', title: 'Three moves bring Alpha back under its cap.', sub: 'Dashed arcs are a preview. Nothing has changed in the portal yet.', dash: '3 4', icon: 'M8 14 L12.5 18.5 L20 10', showCta: false };
+    else band = { cls: '', bg: 'rgba(255,255,255,.12)', border: '#FFFFFF', fg: '#FFFFFF', kick: 'Applied · revision 4', title: 'Equilibrium restored.', sub: 'Alpha is at 292 L/h against a 300 L/h cap. The portal reflects the new assignments.', dash: '0', icon: 'M8 14 L12.5 18.5 L20 10', showCta: false };
+    if (S.loading) band = Object.assign({}, band, { showCta: false });
+
+    // ---------- comparison ----------
+    const infText = 'With a $20 budget and Alpha capped at 300 L/h, JOB-009 cannot finish before 08:00 on any eligible site. Closest option misses it by 1 h 30 min.';
+    let cmp = { show: false, empty: true, emptyText: 'No preview yet. Ask for a schedule above. Gemini will explain what the solver returns, and the full comparison appears here before anything is applied.', tag: 'No preview', tagBg: '#E4ECFA', tagFg: '#3B5280', bstyle: 'solid', bcolor: 'transparent' };
+    const budget = v === 'infeasible' ? 20 : 40;
+    if (S.loading) cmp = Object.assign({}, cmp, { empty: false, tag: 'Solving', tagBg: '#EEF4FF', tagFg: '#003180', bstyle: 'dashed', bcolor: '#0042AC' });
+    else if (s === 1) cmp = Object.assign({}, cmp, { emptyText: 'Alpha is over its temporary cap. Preview a plan and Gemini will propose the smallest set of moves, then show the cost and water before and after.', tag: 'Awaiting preview' });
+    else if (s === 2 || s === 3) {
+      const ok = s === 3 || v !== 'infeasible';
+      const lines = ok ? [
+        { text: 'Move JOB-014 to Beta River. It finishes at 02:00, four hours before its 06:00 deadline, and keeps Alpha within its temporary cap.', delay: 0 },
+        { text: 'JOB-011 goes to Gamma Ridge and JOB-009 follows JOB-014 to Beta one hour later. Together they take Alpha from 470 to 292 L/h at the peak.', delay: 0.18 },
+        { text: 'Cost rises $18.40, inside your $40.00 budget. No deadline slips.', delay: 0.36 }
+      ] : [{ text: 'I could not find a plan that fits. The tightest constraint is JOB-009: it needs 8 GPUs for six hours and only Beta River has room, but starting after 02:00 pushes it past its deadline.', delay: 0 },
+           { text: 'Raising the budget to $40 or relaxing the cap to 340 L/h would each unlock a feasible plan.', delay: 0.18 }];
+      cmp = {
+        show: true, empty: false, infeasible: !ok, stale: stale,
+        staleBanner: stale, textOp: stale ? 0.55 : 1,
+        lines,
+        rows: ok,
+        actions: ok && s === 2,
+        applyOff: stale, applyLabel: 'Apply schedule',
+        budgetText: '$18.40 of $40.00', budgetPct: ok ? 46 : 0,
+        tag: s === 3 ? 'APPLIED ✓' : (!ok ? 'INFEASIBLE' : (stale ? 'STALE PREVIEW' : 'PROPOSED')),
+        tagBg: s === 3 ? '#00122E' : '#FFFFFF', tagFg: s === 3 ? '#FFFFFF' : (!ok || stale ? '#B93D00' : '#003180'),
+        bstyle: s === 3 ? 'solid' : 'dashed', bcolor: s === 3 ? '#00122E' : (!ok || stale ? '#B93D00' : '#0042AC'),
+        metrics: [
+          { label: 'Fleet withdrawal, 12 h', before: '35,952 L', after: '34,992 L', delta: '−960 L · −2.7%', color: '#003180', dcolor: '#003180' },
+          { label: 'Operating cost', before: '$2,412.60', after: '$2,431.00', delta: '+$18.40 · within budget', color: '#0A1630', dcolor: '#3B5280' },
+          { label: 'Alpha hours over cap', before: '6 h', after: '0 h', delta: '−6 h · compliant', color: '#003180', dcolor: '#003180' },
+          { label: 'Deadlines met', before: '14 of 14', after: '14 of 14', delta: 'no change', color: '#0A1630', dcolor: '#3B5280' }
+        ]
+      };
+    }
+
+    // ---------- chart ----------
+    const X = i => 64 + i * (712 / 11), Y = val => 232 - val / 3;
+    const cur = [412, 428, 455, 470, 468, 462, 430, 402, 380, 371, 366, 360];
+    const pro = [412, 428, 296, 292, 288, 285, 282, 280, 330, 326, 322, 318];
+    const line = arr => arr.map((val, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(val).toFixed(1)).join(' ');
+    const capStep = () => {
+      const caps = [500, 500, 300, 300, 300, 300, 300, 300, 500, 500, 500, 500];
+      let d = 'M' + X(0).toFixed(1) + ' ' + Y(caps[0]).toFixed(1);
+      for (let i = 1; i < 12; i++) { d += ' H' + X(i).toFixed(1) + ' V' + Y(caps[i]).toFixed(1); }
+      return d;
+    };
+    let viol = 'M' + X(2).toFixed(1) + ' ' + Y(300).toFixed(1);
+    for (let i = 2; i <= 7; i++) viol += ' L' + X(i).toFixed(1) + ' ' + Y(cur[i]).toFixed(1);
+    viol += ' L' + X(7).toFixed(1) + ' ' + Y(300).toFixed(1) + ' Z';
+    const hours = []; for (let i = 0; i < 12; i++) hours.push({ x: X(i).toFixed(1), t: String((18 + i) % 24).padStart(2, '0') });
+    const propDots = []; for (let i = 2; i <= 7; i++) propDots.push({ x: X(i).toFixed(1), y: Y(pro[i]).toFixed(1) });
+    const showPro = proposedShown || applied;
+    const chartAria = !emerg ? 'Alpha Mesa hourly water stays under a flat 500 liter per hour cap.' :
+      (applied ? 'Alpha Mesa hourly water after applying the plan stays at or below 296 liters per hour during the 300 liter per hour restriction window.' :
+      'Alpha Mesa hourly water exceeds the temporary 300 liter per hour cap from 20:00 to 02:00 UTC, peaking at 470.');
+
+    // ---------- queue ----------
+    const J = [
+      { id: 'JOB-014', gpu: 8, st: 2, en: 8, dl: 12, from: 'Alpha Mesa', to: 'Beta River', mv: true },
+      { id: 'JOB-011', gpu: 4, st: 3, en: 5, dl: 9, from: 'Alpha Mesa', to: 'Gamma Ridge', mv: true },
+      { id: 'JOB-009', gpu: 8, st: 4, en: 10, dl: 14, from: 'Alpha Mesa', to: 'Beta River', mv: true, nst: 5, nen: 11 },
+      { id: 'JOB-012', gpu: 4, st: 0, en: 2, dl: 5, from: 'Theta Harbor' },
+      { id: 'JOB-016', gpu: 8, st: 1, en: 7, dl: 13, from: 'Zeta Prairie' },
+      { id: 'JOB-017', gpu: 16, st: 4, en: 16, dl: 24, from: 'Delta Basin' },
+      { id: 'JOB-019', gpu: 4, queued: true, dl: 20, from: 'Unassigned' }
+    ];
+    const jobs = J.map(j => {
+      const useNew = j.mv && (proposedShown || applied);
+      const st = useNew && j.nst ? j.nst : j.st, en = useNew && j.nen ? j.nen : j.en;
+      let status = 'Queued', dot = 'width:10px;height:10px;border-radius:50%;border:2px solid #3B5280;display:inline-block';
+      if (!j.queued) {
+        if (h < st) { status = 'Scheduled'; dot = 'width:10px;height:10px;border-radius:50%;border:2px solid #0042AC;background:linear-gradient(90deg,#0042AC 50%,transparent 50%);display:inline-block'; }
+        else if (h < en) { status = 'Running'; dot = 'width:10px;height:10px;border-radius:50%;background:#0042AC;display:inline-block;animation:blink 1.4s ease-in-out infinite'; }
+        else { status = 'Completed'; dot = 'width:10px;height:10px;border-radius:2px;background:#0A1630;display:inline-block'; }
+      }
+      const slack = j.queued ? '' : (j.dl - en) + ' h spare';
+      let site = j.from;
+      if (j.mv && useNew) site = j.to;
+      if (j.mv && !useNew && !emerg) site = j.from;
+      const focusRow = S.focus && j.id === 'JOB-014' && (proposedShown || applied);
+      return {
+        id: j.id, gpu: j.gpu, status, dot,
+        siteText: j.mv && useNew ? j.from.split(' ')[0] + ' → ' + j.to.split(' ')[0] : site,
+        proposed: !!(j.mv && proposedShown), applied: !!(j.mv && applied),
+        plain: !(j.mv && (proposedShown || applied)),
+        start: j.queued ? '—' : hh(st),
+        finish: j.queued ? '—' : hh(en),
+        dl: hh(j.dl), slack,
+        rowBg: focusRow ? '#DCE8FF' : 'transparent'
+      };
+    });
+    // plain rows for moved jobs need the original site name
+    jobs.forEach((j, i) => { if (j.plain) j.siteText = J[i].from; });
+
+    const compliance = [
+      { site: 'Alpha Mesa DC', detail: applied ? '292 / 300 L/h · 0 h over' : (emerg ? '470 / 300 L/h · 6 h over' : '470 / 500 L/h · 0 h over'),
+        color: applied ? '#003180' : (emerg ? '#B93D00' : '#003180'),
+        icon: applied ? '✓' : (emerg ? '▲' : '✓'),
+        text: applied ? 'Compliant' : (proposedShown ? 'Fixed if applied' : (emerg ? 'Over cap' : 'Within cap')) },
+      { site: 'Beta River DC', detail: (applied || proposedShown ? '389' : '318') + ' / 400 L/h', color: '#003180', icon: '✓', text: 'Within cap' },
+      { site: 'Gamma Ridge DC', detail: (applied || proposedShown ? '289' : '262') + ' / 420 L/h', color: '#003180', icon: '✓', text: 'Within cap' }
+    ];
+
+    // ---------- drawer ----------
+    let drawer = { open: false };
+    if (S.sel !== null) {
+      const o = sites[S.sel];
+      const over = o.w > o.c;
+      const here = jobs.filter((j, i) => {
+        const jj = J[i];
+        if (!jj.from || jj.queued) return false;
+        const dest = jj.mv && applied ? jj.to : jj.from;
+        return dest.split(' ')[0] === o.short.split(' ')[0];
+      }).map(j => j.id).join(', ') || 'none';
+      drawer = { open: true, name: o.n, util: o.u + '%', water: fmt(o.w) + ' L/h', cap: fmt(o.c) + ' L/h',
+        status: over ? '▲ Over cap by ' + fmt(o.w - o.c) + ' L/h' : '✓ Within cap with ' + fmt(o.c - o.w) + ' L/h spare',
+        statusColor: over ? '#B93D00' : '#003180', jobs: here };
+    }
+
+    const stBtn = (n) => ({ on: s === n ? 'true' : 'false', cls: s === n ? 'segOn' : '' });
+    const vBtn = (k) => ({ on: v === k ? 'true' : 'false', cls: v === k ? 'segOn' : '' });
+    const mode = S.mode;
+    const segOn = 'background:#00122E;color:#fff;border-color:#00122E';
+    const segOff = 'background:transparent;color:#1B2D52;border-color:transparent';
+
+    return {
+      clockText: clockFull.replace(' UTC', ' UTC'),
+      band, loading: S.loading,
+      st0: stBtn(0), st1: stBtn(1), st2: stBtn(2), st3: stBtn(3),
+      vOk: vBtn('ok'), vStale: vBtn('stale'), vInf: vBtn('infeasible'),
+      go0: () => { this.clear(); this.toStage(0, { variant: 'ok' }); },
+      go1: () => { this.clear(); this.toStage(1, { variant: 'ok' }); },
+      go2: () => { this.clear(); this.toStage(2); },
+      go3: () => { this.clear(); this.toStage(3, { variant: 'ok' }); },
+      setOk: () => this.setState({ variant: 'ok', stage: Math.max(S.stage, 2) === 3 ? 2 : 2, loading: false, h: Math.max(S.h, 1) }),
+      setStale: () => this.setState({ variant: 'stale', stage: 2, loading: false, h: Math.max(S.h, 1) }),
+      setInf: () => this.setState({ variant: 'infeasible', stage: 2, loading: false, h: Math.max(S.h, 1) }),
+      advance: () => this.setState({ h: Math.min(S.h + 1, 11) }),
+      reset: () => { this.clear(); this.setState({ stage: 0, h: 0, variant: 'ok', loading: false, toast: false, sel: null, why: false, playing: false }); },
+      play: () => {
+        this.clear();
+        this.setState({ stage: 0, h: 0, variant: 'ok', loading: false, toast: false, playing: true, why: false });
+        this.later(() => this.toStage(1), 2600);
+        this.later(() => this.runPreview('ok'), 5600);
+        this.later(() => this.toStage(3), 12500);
+        this.later(() => this.setState({ playing: false }), 15000);
+      },
+      playLabel: S.playing ? 'Playing the story…' : 'Play the 3-minute story',
+      previewOk: () => this.runPreview('ok'),
+      rerunLow: () => this.runPreview('infeasible'),
+      discard: () => { this.clear(); this.toStage(1, { variant: 'ok' }); },
+      apply: () => { if (S.variant === 'ok') this.toStage(3); },
+      previewLabel: S.loading ? 'Solving…' : (s >= 2 ? 'Preview again' : 'Preview schedule'),
+      haloColor: emerg && s < 3 ? '#FF8A3D' : '#00D3FB',
+      orbCalmOp: emerg && s < 3 && !S.loading ? 0 : 1,
+      orbAlertOp: emerg && s < 3 && !S.loading ? 1 : 0,
+      arcs, nodes, chips, drops, fleetNow, fleetSub,
+      drawer, closeDrawer: () => this.setState({ sel: null }),
+      routineOn: mode === 'routine', emergencyOn: mode === 'emergency',
+      routineStyle: mode === 'routine' ? segOn : segOff, emergencyStyle: mode === 'emergency' ? segOn : segOff,
+      modeRoutine: () => this.setState({ mode: 'routine', instr: 'Find the cheapest schedule that keeps every site under its normal water cap and meets all deadlines.' }),
+      modeEmergency: () => this.setState({ mode: 'emergency', instr: 'Alpha Mesa has a water restriction tonight. Keep it under 300 L/h from 8 p.m. to 2 a.m. and do not miss any deadlines.' }),
+      siteVal: S.site, capVal: S.cap, startVal: S.start, endVal: S.end, budgetVal: S.budget, instrVal: S.instr,
+      onSite: e => this.setState({ site: e.target.value }), onCap: e => this.setState({ cap: e.target.value }),
+      onStart: e => this.setState({ start: e.target.value }), onEnd: e => this.setState({ end: e.target.value }),
+      onBudget: e => this.setState({ budget: e.target.value }), onInstr: e => this.setState({ instr: e.target.value }),
+      cmp, infText, whyOn: S.why && cmp.show && !cmp.infeasible,
+      toggleWhy: () => this.setState({ why: !S.why }),
+      toggleFocus: () => this.setState({ focus: !S.focus }),
+      focusLabel: S.focus ? 'Hide JOB-014 highlight' : 'Highlight JOB-014 move',
+      toast: S.toast && s === 3,
+      hours, chartAria,
+      winX: X(2).toFixed(1), winW: (X(8) - X(2)).toFixed(1), emOp: emerg ? 1 : 0, violOp: emerg && !applied ? 1 : 0,
+      violD: viol, capFlatD: 'M' + X(0).toFixed(1) + ' ' + Y(500).toFixed(1) + ' H' + X(11).toFixed(1), capFlatOp: emerg ? 0 : 1,
+      capStepD: capStep(), capStepOp: emerg ? 1 : 0,
+      curD: line(cur), curOp: applied ? 0.3 : 1,
+      propD: line(pro), propDash: applied ? '0' : '9 7', propOp: showPro ? 1 : 0, propDots, dotFill: applied ? '#FFFFFF' : '#00224F',
+      wipeW: showPro ? 820 : 0,
+      nowX: X(Math.min(h, 11)).toFixed(1),
+      capLblX: ((X(2) + X(8)) / 2).toFixed(1), capLblY: (Y(300) + 16).toFixed(1),
+      jobs, compliance, queueNote: 'Shared queue · ' + (proposedShown ? 'dashed = proposed move' : (applied ? 'solid = applied move' : 'current assignments'))
+    };
+  }
+}
+</script>
+</body>
+</html>

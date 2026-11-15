@@ -47,11 +47,15 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-## Run
+## Run (one command — API + both pages)
 
-```bash
+From the project root with `.venv` activated:
+
+```powershell
 python -m uvicorn app.main:app --reload
 ```
+
+That single process serves the REST API, static CSS/JS, and the HTML pages. Open a browser (no separate frontend build):
 
 | URL | Purpose |
 |-----|---------|
@@ -60,6 +64,14 @@ python -m uvicorn app.main:app --reload
 | http://127.0.0.1:8000/docs | OpenAPI docs |
 
 Root `/` redirects to `/portal`.
+
+**Port already in use (`WinError 10013` on Windows):** another `uvicorn` (or other app) is bound to port 8000. Stop it (Ctrl+C in that terminal) or use another port:
+
+```powershell
+python -m uvicorn app.main:app --reload --port 8001
+```
+
+Then open http://127.0.0.1:8001/portal instead.
 
 ## Fixture state & demo clock
 
