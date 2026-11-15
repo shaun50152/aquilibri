@@ -1,5 +1,8 @@
 """Reset Tiger Data site tables and seed five enterprise data centers (48h).
 
+Water caps are mathematically grounded in published Water Usage Effectiveness
+(WUE) from Meta / Microsoft 2024–2025 sustainability reports — not random ints.
+
 Also refreshes local synthetic fixtures so DATA_MODE=synthetic mirrors live.
 """
 
@@ -18,13 +21,60 @@ from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
 from app.config import clear_settings_cache
-from app.demo_sites import build_demo_site_profiles, write_site_fixtures
+from app.demo_sites import (
+    DEMO_SITE_SPECS,
+    IT_POWER_KW,
+    SITE_WUE_BASELINES_L_PER_KWH,
+    base_water_usage_lph,
+    build_demo_site_profiles,
+    daily_heat_multipliers,
+    write_site_fixtures,
+)
 from app.integrations.tigerdata import (
     ensure_site_profile_schema,
     fetch_site_profiles,
     tiger_connection,
     tiger_env_configured,
 )
+
+# ---------------------------------------------------------------------------
+# Real-world WUE baselines (L/kWh) — Meta 2024 / Microsoft 2025 + cooling class
+# ---------------------------------------------------------------------------
+# Keys match the pitch regions; values are liters of water per kWh of IT load.
+SITE_WUE: dict[str, float] = {
+    "EU-West-1 (Dublin)": 0.19,  # Meta 2024 Average
+    "US-West-1 (Santa Clara)": 0.27,  # Microsoft 2025 Average
+    "AP-Northeast (Tokyo)": 1.00,  # Mixed Cooling
+    "US-East-1 (Ashburn)": 1.50,  # Standard Evaporative
+    "US-South-Central (Dallas)": 1.90,  # High-Temp Evaporative
+}
+
+# Keep the module-level dict identical to the shared catalog (single source of truth).
+assert SITE_WUE == SITE_WUE_BASELINES_L_PER_KWH
+
+
+def _print_wue_plan(hours: int) -> None:
+    heat = daily_heat_multipliers(hours)
+    print(
+        f"IT load assumption: {IT_POWER_KW:,.0f} kW (50 MW) continuous (WUE pitch math)\n"
+        f"Daily heat curve: {min(heat):.2f}x night -> {max(heat):.2f}x afternoon "
+        f"({hours} h)\n"
+        "Persisted water_cap = demo_ceiling (200-500 L/h) * heat * U(0.95, 1.05)\n"
+        "WUE and regional $/kWh are unchanged; only the UI/scheduler ceiling is scaled.\n"
+    )
+    print(
+        f"{'Site':<32} {'WUE':>6} {'Source':<28} {'WUE base':>12} {'Demo cap':>10}"
+    )
+    print("-" * 94)
+    label_by_wue = {v: k for k, v in SITE_WUE.items()}
+    for spec in DEMO_SITE_SPECS:
+        base = base_water_usage_lph(spec.wue_l_per_kwh)
+        label = label_by_wue.get(spec.wue_l_per_kwh, spec.name)
+        print(
+            f"{label:<32} {spec.wue_l_per_kwh:>6.2f} {spec.wue_source:<28} "
+            f"{base:>12,.1f} {spec.demo_water_cap_liters_per_hour:>10.0f}"
+        )
+    print()
 
 
 def _drop_and_recreate(conn) -> None:
@@ -92,6 +142,8 @@ def main() -> None:
     args = parser.parse_args()
 
     clear_settings_cache()
+    _print_wue_plan(args.hours)
+
     short_path, extended_path = write_site_fixtures(
         short_hours=3, extended_hours=max(args.hours, 24)
     )
@@ -114,7 +166,13 @@ def main() -> None:
     hours = sum(len(s.hourly_profiles) for s in loaded)
     print(f"Seeded {len(loaded)} sites / {hours} hourly rows into Tiger Data:")
     for site in loaded:
-        print(f"  - {site.site_id}: {site.name} ({len(site.hourly_profiles)} h)")
+        caps = [r.water_cap_liters_per_hour for r in site.hourly_profiles if r.water_cap_liters_per_hour is not None]
+        lo = min(caps) if caps else 0.0
+        hi = max(caps) if caps else 0.0
+        print(
+            f"  - {site.site_id}: {site.name} "
+            f"({len(site.hourly_profiles)} h, water_cap {lo:,.0f}-{hi:,.0f} L/h)"
+        )
 
 
 if __name__ == "__main__":

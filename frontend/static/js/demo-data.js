@@ -12,10 +12,10 @@
   // Enterprise regions — mirrors app/demo_sites.py / Tiger seed.
   // [site_id, name, fixed L/h, incremental L/GPU-h, normal cap L/h, gpu, price]
   const SITE_ROWS = [
-    ["us-east-1", "US-East-1 (Ashburn, VA)", 105, 0.75, 520, 48, 0.085],
-    ["us-south-central", "US-South-Central (Dallas, TX)", 95, 0.88, 480, 32, 0.055],
-    ["us-west-1", "US-West-1 (Santa Clara, CA)", 115, 0.92, 280, 36, 0.145],
-    ["eu-west-1", "EU-West-1 (Dublin, Ireland)", 88, 0.7, 400, 40, 0.155],
+    ["us-east-1", "US-East-1 (Ashburn, VA)", 105, 0.75, 500, 48, 0.085],
+    ["us-south-central", "US-South-Central (Dallas, TX)", 95, 0.88, 360, 32, 0.055],
+    ["us-west-1", "US-West-1 (Santa Clara, CA)", 115, 0.92, 250, 36, 0.145],
+    ["eu-west-1", "EU-West-1 (Dublin, Ireland)", 88, 0.7, 500, 40, 0.155],
     ["ap-northeast", "AP-Northeast (Tokyo, Japan)", 92, 0.62, 420, 40, 0.175],
   ];
   const SITE_IDS = SITE_ROWS.map((r) => r[0]);
