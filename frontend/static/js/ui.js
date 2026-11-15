@@ -4,6 +4,25 @@
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+/** SVG and inline colors. These are the CSS tokens themselves, so light and dark themes
+    both apply to SVG attributes and inline styles without re-rendering. */
+const PAL = {
+  accent: "var(--teal)",
+  accentInk: "var(--teal-ink)",
+  accentSoft: "var(--teal-soft)",
+  violet: "var(--violet)",
+  ember: "var(--ember)",
+  emberInk: "var(--ember-ink)",
+  emberSoft: "var(--ember-soft)",
+  grid: "var(--line)",
+  label: "var(--ink-2)",
+  muted: "var(--muted)",
+  surface: "var(--surface)",
+  ink: "var(--ink)",
+  tile: "var(--tile-2)",
+};
+const FONT = "Inter, system-ui, sans-serif";
+
 function el(tag, attrs, children) {
   const node = document.createElement(tag);
   if (attrs) {
@@ -154,8 +173,8 @@ function toast(message) {
     document.body.appendChild(toastRoot);
   }
   const icon = svg("svg", { width: 22, height: 22, viewBox: "0 0 22 22", "aria-hidden": "true" }, [
-    svg("circle", { cx: 11, cy: 11, r: 10, fill: "#E7F4F3" }),
-    svg("path", { d: "M6 11.5 L9.5 15 L16 7.5", fill: "none", stroke: "#0F6E76", "stroke-width": 2.4, "stroke-linecap": "round", "stroke-linejoin": "round" }),
+    svg("circle", { cx: 11, cy: 11, r: 10, fill: PAL.accentSoft }),
+    svg("path", { d: "M6 11.5 L9.5 15 L16 7.5", fill: "none", stroke: PAL.accentInk, "stroke-width": 2.4, "stroke-linecap": "round", "stroke-linejoin": "round" }),
   ]);
   const item = el("div", { className: "toast pop" }, [icon, el("div", { text: message })]);
   toastRoot.appendChild(item);
@@ -173,13 +192,161 @@ function unavailablePanel(detail) {
   ]);
 }
 
-/* ---------- shared brand mark ---------- */
+/* ---------- shared brand mark ----------
+   The AquaLibri mark: a water drop with a wave curling inside it and a balance scale at
+   its edge (water in equilibrium). Drawn as strokes so it stays crisp at 30 px and takes
+   its colours from the theme tokens. */
 function logoSvg() {
-  return svg("svg", { width: 36, height: 36, viewBox: "0 0 36 36", "aria-hidden": "true" }, [
-    svg("circle", { cx: 18, cy: 18, r: 15, fill: "none", stroke: "#9FD3D2", "stroke-width": 1.5 }),
-    svg("circle", { cx: 18, cy: 18, r: 9, fill: "none", stroke: "#2A9D9F", "stroke-width": 1.5, "stroke-dasharray": "2 3" }),
-    svg("path", { d: "M18 9 C21 14 23 16 23 19.5 A5 5 0 0 1 13 19.5 C13 16 15 14 18 9Z", fill: "#0F6E76" }),
+  const line = (d, extra) => svg("path", { d, fill: "none", stroke: "url(#aqLogoGrad)", "stroke-width": 2.1, "stroke-linecap": "round", "stroke-linejoin": "round", ...extra });
+  return svg("svg", { class: "brandMark", width: 34, height: 34, viewBox: "0 0 48 48", "aria-hidden": "true" }, [
+    svg("defs", null, [
+      svg("linearGradient", { id: "aqLogoGrad", x1: 0, y1: 0, x2: 0.9, y2: 1 }, [
+        svg("stop", { offset: "0%", "stop-color": "var(--logo-a)" }),
+        svg("stop", { offset: "100%", "stop-color": "var(--logo-b)" }),
+      ]),
+    ]),
+    // drop outline, left open where the scale sits
+    line("M27 15.5 C24.5 11.5 22.3 8 20 4 C14 13 5 21.5 5 31.5 A15.5 15.5 0 0 0 30.5 43.2"),
+    // inner peak
+    line("M20 11.5 C16.5 17 11.5 22 11 29"),
+    line("M20 11.5 C21.6 14 23 16 24.4 18.2"),
+    // wave curling in from the left
+    line("M6.5 34 C10 26.5 19.5 25.5 21.5 32 C22.7 36 19 38.6 16.6 36.4 C15 34.8 16.3 32.4 18.3 33"),
+    line("M11.5 41 C17 44.5 25.5 43.5 29 37.5"),
+    // balance scale
+    svg("g", { fill: "none", stroke: "var(--logo-c)", "stroke-width": 2.1, "stroke-linecap": "round", "stroke-linejoin": "round" }, [
+      svg("path", { d: "M27 22 H45 M36 18.5 V38 M31 38 H41" }),
+      svg("path", { d: "M27 22 L24.5 29 M27 22 L29.5 29 M45 22 L42.5 29 M45 22 L47.5 29" , "stroke-width": 1.4 }),
+      svg("path", { d: "M24 29 H30 A3 3 0 0 1 24 29 Z M42 29 H48 A3 3 0 0 1 42 29 Z", fill: "var(--logo-c)", "fill-opacity": 0.18 }),
+    ]),
   ]);
+}
+
+/* ---------- app chrome: side nav scroll-spy + profile menu ---------- */
+const USER = { name: "Shaun", initial: "S", role: "Workspace owner" };
+
+function initSideNav() {
+  const side = document.querySelector(".side");
+  if (!side) return;
+  const links = [...side.querySelectorAll('a.sideLink[href^="#"]')];
+  const targets = links.map((a) => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+  const mark = (id) => links.forEach((a) => a.classList.toggle("isActive", a.getAttribute("href") === `#${id}`));
+  if (targets.length) {
+    // The active section is the last one whose top has passed a line near the top of the
+    // viewport (just under the sticky bar). After a click, that link wins until scrolling settles.
+    let raf = 0;
+    let lockUntil = 0;
+    const spy = () => {
+      raf = 0;
+      if (Date.now() < lockUntil) return;
+      const line = Math.min(window.innerHeight * 0.3, 160);
+      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      let cur = targets[0];
+      if (atBottom && window.scrollY > 0) cur = targets[targets.length - 1];
+      else for (const t of targets) if (t.getBoundingClientRect().top <= line) cur = t;
+      mark(cur.id);
+    };
+    for (const a of links) {
+      a.addEventListener("click", () => {
+        mark(a.getAttribute("href").slice(1));
+        lockUntil = Date.now() + 900;
+      });
+    }
+    window.addEventListener("scroll", () => {
+      if (Date.now() < lockUntil) lockUntil = Date.now() + 150; // still smooth-scrolling
+      raf ||= requestAnimationFrame(spy);
+    }, { passive: true });
+    spy();
+  }
+
+  // Rail mode: icons only. Hover or keyboard focus slides the full panel out over the page,
+  // and it closes again when the pointer leaves.
+  const app = document.querySelector(".app");
+  const dock = window.matchMedia("(max-width: 680px)");
+  app.classList.add("isRail");
+  let enterT = 0;
+  let leaveT = 0;
+  const peek = (on) => side.classList.toggle("isPeek", on && !dock.matches);
+  side.addEventListener("mouseenter", () => {
+    clearTimeout(leaveT);
+    enterT = setTimeout(() => peek(true), 90);
+  });
+  side.addEventListener("mouseleave", () => {
+    clearTimeout(enterT);
+    leaveT = setTimeout(() => peek(false), 160);
+  });
+  side.addEventListener("focusin", (e) => {
+    if (e.target.matches(":focus-visible")) peek(true);
+  });
+  side.addEventListener("focusout", (e) => {
+    if (!side.contains(e.relatedTarget)) peek(false);
+  });
+  side.addEventListener("click", (e) => {
+    if (e.target.closest("a.sideLink")) peek(false);
+  });
+}
+
+/* ---------- light / dark theme ---------- */
+const THEME_KEY = "aq.theme";
+function currentTheme() {
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+}
+function initThemeToggle() {
+  const item = document.getElementById("theme-item");
+  if (!item) return;
+  const label = document.getElementById("theme-label");
+  const paint = () => {
+    const dark = currentTheme() === "dark";
+    item.setAttribute("aria-checked", dark ? "true" : "false");
+    label.textContent = "Dark mode";
+  };
+  item.addEventListener("click", (e) => {
+    e.stopPropagation(); // keep the menu open so the switch visibly flips
+    const next = currentTheme() === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem(THEME_KEY, next); } catch { /* storage blocked */ }
+    paint();
+  });
+  paint();
+}
+
+function initProfileMenu() {
+  const btn = document.getElementById("profile-btn");
+  const menu = document.getElementById("profile-menu");
+  if (!btn || !menu) return;
+  const close = () => {
+    menu.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+  };
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = menu.hidden;
+    menu.hidden = !open;
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) menu.querySelector("[role=menuitem]")?.focus();
+  });
+  document.addEventListener("click", (e) => {
+    if (!menu.hidden && !menu.contains(e.target)) close();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !menu.hidden) {
+      close();
+      btn.focus();
+    }
+  });
+  for (const item of menu.querySelectorAll("[data-action]")) {
+    item.addEventListener("click", () => {
+      close();
+      const what = { profile: "Profile", settings: "Settings", switch: "Switching accounts", logout: "Signing out" }[item.dataset.action];
+      toast(`${what} isn't wired up in this demo yet. You're signed in as ${USER.name}.`);
+    });
+  }
+}
+
+function initChrome() {
+  initSideNav();
+  initProfileMenu();
+  initThemeToggle();
 }
 
 /* ---------- site model shared by both pages ---------- */
@@ -566,26 +733,26 @@ function drawWaterChart(svgEl, view) {
   if (!L) {
     svgEl.replaceChildren();
     const hatch = svg("pattern", { id: "hatch", width: 8, height: 8, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, [
-      svg("rect", { width: 8, height: 8, fill: "rgba(224,122,63,.05)" }),
-      svg("line", { x1: 0, y1: 0, x2: 0, y2: 8, stroke: "rgba(224,122,63,.28)", "stroke-width": 2 }),
+      svg("rect", { width: 8, height: 8, fill: "color-mix(in srgb, var(--ember) 6%, transparent)" }),
+      svg("line", { x1: 0, y1: 0, x2: 0, y2: 8, stroke: "color-mix(in srgb, var(--ember) 30%, transparent)", "stroke-width": 2 }),
     ]);
     const wipeRect = svg("rect", { x: 0, y: 0, height: 270, class: "wipeRect", style: "width:0px" });
-    svgEl.appendChild(svg("defs", null, [hatch, svg("clipPath", { id: "wipe" }, [wipeRect]), svg("linearGradient", { id: "curFill", x1: 0, y1: 0, x2: 0, y2: 1 }, [svg("stop", { offset: "0%", "stop-color": "#2A9D9F", "stop-opacity": ".28" }), svg("stop", { offset: "100%", "stop-color": "#2A9D9F", "stop-opacity": "0" })])]));
-    const grid = svg("g", { stroke: "#E6ECEC", "stroke-width": 1 });
-    const yLabels = svg("g", { "font-family": "Hanken Grotesk, sans-serif", "font-size": 12, fill: "#5A6B72", "text-anchor": "end" });
-    const xLabels = svg("g", { "font-family": "Hanken Grotesk, sans-serif", "font-size": 12, fill: "#5A6B72", "text-anchor": "middle" });
+    svgEl.appendChild(svg("defs", null, [hatch, svg("clipPath", { id: "wipe" }, [wipeRect]), svg("linearGradient", { id: "curFill", x1: 0, y1: 0, x2: 0, y2: 1 }, [svg("stop", { offset: "0%", "stop-color": PAL.accent, "stop-opacity": ".32" }), svg("stop", { offset: "100%", "stop-color": PAL.accent, "stop-opacity": "0" })])]));
+    const grid = svg("g", { stroke: PAL.grid, "stroke-width": 1 });
+    const yLabels = svg("g", { "font-family": FONT, "font-size": 12, fill: PAL.label, "text-anchor": "end" });
+    const xLabels = svg("g", { "font-family": FONT, "font-size": 12, fill: PAL.label, "text-anchor": "middle" });
     const win = svg("rect", { y: 28, height: 206, fill: "url(#hatch)", class: "lineT" });
-    const viol = svg("path", { fill: "rgba(224,122,63,.30)", class: "lineT" });
-    const cap = svg("path", { fill: "none", stroke: "#E07A3F", "stroke-width": 2, "stroke-dasharray": "6 4", class: "lineT" });
-    const cur = svg("path", { fill: "none", stroke: "#2A9D9F", "stroke-width": 2.5, "stroke-linejoin": "round", class: "lineT" });
+    const viol = svg("path", { fill: "color-mix(in srgb, var(--ember) 28%, transparent)", class: "lineT" });
+    const cap = svg("path", { fill: "none", stroke: PAL.ember, "stroke-width": 2, "stroke-dasharray": "6 4", class: "lineT" });
+    const cur = svg("path", { fill: "none", stroke: PAL.accent, "stroke-width": 2.5, "stroke-linejoin": "round", class: "lineT" });
     const area = svg("path", { fill: "url(#curFill)", class: "lineT" });
-    const prop = svg("path", { fill: "none", stroke: "#0B4F58", "stroke-width": 2.5, "stroke-linejoin": "round", class: "lineT" });
+    const prop = svg("path", { fill: "none", stroke: PAL.violet, "stroke-width": 2.5, "stroke-linejoin": "round", class: "lineT" });
     const dots = svg("g");
     const now = svg("g", { class: "nowG" }, [
-      svg("line", { x1: 0, x2: 0, y1: 24, y2: 236, stroke: "#9AAAB0", "stroke-width": 1.2, "stroke-dasharray": "3 4" }),
-      svg("text", { x: 6, y: 22, "font-family": "Hanken Grotesk, sans-serif", "font-size": 11, fill: "#5A6B72", "font-weight": 600, text: "Sim now" }),
+      svg("line", { x1: 0, x2: 0, y1: 24, y2: 236, stroke: PAL.muted, "stroke-width": 1.2, "stroke-dasharray": "3 4" }),
+      svg("text", { x: 6, y: 22, "font-family": FONT, "font-size": 11, fill: PAL.label, "font-weight": 600, text: "Sim now" }),
     ]);
-    const capLbl = svg("text", { "font-family": "Hanken Grotesk, sans-serif", "font-size": 11, fill: "#B4410F", "font-weight": 600, "text-anchor": "middle", class: "lineT" });
+    const capLbl = svg("text", { "font-family": FONT, "font-size": 11, fill: PAL.emberInk, "font-weight": 600, "text-anchor": "middle", class: "lineT" });
     [grid, yLabels, xLabels, win, area, viol, cap, cur, svg("g", { "clip-path": "url(#wipe)" }, [prop, dots]), now, capLbl].forEach((n) => svgEl.appendChild(n));
     L = svgEl._aq = { wipeRect, grid, yLabels, xLabels, win, area, viol, cap, cur, prop, dots, now, capLbl };
   }
@@ -678,7 +845,7 @@ function drawWaterChart(svgEl, view) {
     L.prop.style.opacity = "1";
     view.prop.forEach((v, i) => {
       if (Math.abs(v - view.cur[i]) < 0.5) return;
-      L.dots.appendChild(svg("circle", { cx: X(i).toFixed(1), cy: Y(v).toFixed(1), r: 5, stroke: "#0B4F58", "stroke-width": 2, style: `fill:${view.applied ? "#0B4F58" : "#FFFFFF"}` }));
+      L.dots.appendChild(svg("circle", { cx: X(i).toFixed(1), cy: Y(v).toFixed(1), r: 5, stroke: PAL.violet, "stroke-width": 2, style: `fill:${view.applied ? PAL.violet : PAL.surface}` }));
     });
     requestAnimationFrame(() => (L.wipeRect.style.width = "820px"));
   } else {

@@ -88,6 +88,56 @@ def test_generate_requires_api_key(monkeypatch):
     clear_settings_cache()
 
 
+class _FakeResponse:
+    def __init__(self, status_code, body):
+        self.status_code = status_code
+        self._body = body
+        self.text = str(body)
+
+    def json(self):
+        return self._body
+
+
+def _with_key(monkeypatch, fake_post):
+    from app.config import clear_settings_cache
+
+    monkeypatch.setenv("GROK_API_KEY", "test-key")
+    monkeypatch.setattr("app.integrations.grok_summary.httpx.post", fake_post)
+    clear_settings_cache()
+
+
+def test_generate_posts_chat_completion_over_http(monkeypatch):
+    seen = {}
+
+    def fake_post(url, headers, json, timeout):
+        seen.update(url=url, auth=headers["Authorization"], model=json["model"])
+        return _FakeResponse(200, {"choices": [{"message": {"content": "  Ran clean. Under cap.  "}}]})
+
+    _with_key(monkeypatch, fake_post)
+    try:
+        assert generate_job_summary({"job_id": "x"}) == "Ran clean. Under cap."
+        assert seen["url"].endswith("/chat/completions")
+        assert seen["auth"] == "Bearer test-key"
+    finally:
+        from app.config import clear_settings_cache
+
+        clear_settings_cache()
+
+
+def test_generate_surfaces_credit_errors(monkeypatch):
+    def fake_post(url, headers, json, timeout):
+        return _FakeResponse(403, {"code": "permission-denied", "error": "no credits"})
+
+    _with_key(monkeypatch, fake_post)
+    try:
+        with pytest.raises(GrokSummaryError, match="no API credits"):
+            generate_job_summary({"job_id": "x"})
+    finally:
+        from app.config import clear_settings_cache
+
+        clear_settings_cache()
+
+
 def test_summary_route_requires_completed(client):
     res = client.get("/api/jobs/job-hackuta-0001/summary")
     assert res.status_code == 404

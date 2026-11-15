@@ -74,15 +74,15 @@ function observe(job, submittedHere) {
   let o = obs.get(job.id);
   const site = job.assigned_site_id;
   if (!o) {
-    o = { firstSeen: at, placedSeen: site ? at : null, site, status: job.status, start: job.scheduled_start, deadline: job.deadline, events: [], move: null };
+    o = { firstSeen: submittedHere ? at : null, placedSeen: submittedHere && site ? at : null, site, status: job.status, start: job.scheduled_start, deadline: job.deadline, events: [], move: null };
     obs.set(job.id, o);
     const spec = `${tplName(job.template)}, ${job.gpu_count} GPUs for ${fmtHours(job.duration_hours)} h, deadline ${fullUtc(job.deadline)}.`;
     o.events.push({ at, text: submittedHere ? `Submitted. ${spec}` : `In the queue when this page opened. ${spec}` });
     if (site) o.events.push({ at, text: `Placed on ${siteName(site)}.${job.scheduled_start ? ` Starts ${hhmm(job.scheduled_start)}.` : ""}` });
     if (job.status === "running") o.events.push({ at, text: `Running on ${siteName(site)}.` });
-    if (job.status === "completed") o.events.push({ at: job.completed_at || at, text: `Completed.${job.result_url ? " Sample result is ready." : ""}`, dot: "#0F6E76" });
-    if (job.status === "failed") o.events.push({ at, text: `Failed on ${siteName(site)}.`, dot: "#B4410F" });
-    if (job.status === "unfulfilled") o.events.push({ at, text: "Marked unfulfilled by the scheduler.", dot: "#B4410F" });
+    if (job.status === "completed") o.events.push({ at: job.completed_at || at, text: `Completed.${job.result_url ? " Sample result is ready." : ""}`, dot: PAL.accent });
+    if (job.status === "failed") o.events.push({ at, text: `Failed on ${siteName(site)}.`, dot: PAL.ember });
+    if (job.status === "unfulfilled") o.events.push({ at, text: "Marked unfulfilled by the scheduler.", dot: PAL.ember });
     return { changed: false };
   }
 
@@ -99,20 +99,20 @@ function observe(job, submittedHere) {
       o.events.push({
         at,
         text: `Reassigned from ${siteName(o.site)} to ${siteName(site)}. ${sameTimes ? "Start time and deadline unchanged." : `Now starts ${hhmm(job.scheduled_start)}.`}`,
-        dot: "#0F6E76",
+        dot: PAL.accent,
       });
       toast(`${shortJobId(job.id)} moved to ${siteName(site)}.`);
     } else {
-      o.events.push({ at, text: `Unassigned from ${siteName(o.site)}.`, dot: "#C9D6D6" });
+      o.events.push({ at, text: `Unassigned from ${siteName(o.site)}.`, dot: PAL.muted });
     }
   }
   if (job.status !== o.status) {
     if (job.status === "running") o.events.push({ at, text: `Started on ${siteName(site)}.` });
     else if (job.status === "completed") {
-      o.events.push({ at: job.completed_at || at, text: `Completed.${job.result_url ? " Sample result is ready to download." : ""}`, dot: "#0F6E76" });
+      o.events.push({ at: job.completed_at || at, text: `Completed.${job.result_url ? " Sample result is ready to download." : ""}`, dot: PAL.accent });
       completedNow = true;
-    } else if (job.status === "failed") o.events.push({ at, text: `Failed on ${siteName(site)}.`, dot: "#B4410F" });
-    else if (job.status === "unfulfilled") o.events.push({ at, text: "Marked unfulfilled by the scheduler.", dot: "#B4410F" });
+    } else if (job.status === "failed") o.events.push({ at, text: `Failed on ${siteName(site)}.`, dot: PAL.ember });
+    else if (job.status === "unfulfilled") o.events.push({ at, text: "Marked unfulfilled by the scheduler.", dot: PAL.ember });
     else if (job.status === "scheduled" && o.status === "queued" && site === o.site) o.events.push({ at, text: "Scheduled." });
   }
   o.site = site;
@@ -126,9 +126,7 @@ function observe(job, submittedHere) {
 function renderHeader() {
   $("demo-clock").textContent = clockText(clockIso);
   const n = sites.length;
-  $("sim-banner").textContent = `SIMULATED · ${n} SITE${n === 1 ? "" : "S"} · NO REAL GPUS`;
-  $("hero-kick").textContent = `User portal · ${ownerId || "demo user"}`;
-  $("hero-sub").textContent = `Send a workload and we place it on whichever of ${numberWord(n).toLowerCase()} simulated data center${n === 1 ? "" : "s"} has the easiest water.`;
+  $("hero-sub").textContent = `Send a workload and we run it on whichever of your ${numberWord(n).toLowerCase()} data center${n === 1 ? "" : "s"} has the most water headroom.`;
   const mine = myJobs();
   $("stat-jobs").textContent = String(mine.length);
   $("stat-running").textContent = String(mine.filter((j) => j.status === "running").length);
@@ -202,15 +200,15 @@ function renderMini() {
   }
 
   const queued = mine.filter((j) => j.status === "queued" && !j.assigned_site_id).length;
-  let caption = "Running routes carry a stream of droplets. Each tank shows that site's modeled water right now; the ember line is its cap.";
+  let caption = "";
   if (sel) {
     const id = shortJobId(sel.id);
-    if (o?.move) caption = `${id} moved from ${siteName(o.move.from)} to ${siteName(o.move.to)}. Simulated.`;
-    else if (sel.assigned_site_id) caption = `${id} runs on ${siteName(sel.assigned_site_id)}, highlighted. Simulated.`;
+    if (o?.move) caption = `${id} moved from ${siteName(o.move.from)} to ${siteName(o.move.to)}.`;
+    else if (sel.assigned_site_id) caption = `${id} runs on ${siteName(sel.assigned_site_id)}.`;
     else caption = `${id} is in the queue, waiting for a site.`;
   }
   $("mini-caption").textContent = caption;
-  $("place-note").textContent = sites.length > shown.length ? `${shown.length} of ${sites.length} sites shown` : `${sites.length} simulated site${sites.length === 1 ? "" : "s"}`;
+  $("place-note").textContent = sites.length > shown.length ? `${shown.length} of ${sites.length} sites shown` : `${sites.length} site${sites.length === 1 ? "" : "s"}`;
   drawFlow($("place-flow"), {
     prefer: "one",
     hub: {
@@ -224,6 +222,22 @@ function renderMini() {
     drops,
     falls: pendingFalls.splice(0),
   });
+}
+
+/** Nothing can start before "now" (the simulation clock), so keep both pickers at or after it. */
+function syncDateFloor() {
+  if (!clockIso) return;
+  const now = toDatetimeLocalValue(clockIso);
+  earliestInput.min = now;
+  if (earliestInput.value && earliestInput.value < now) {
+    const winMs = deadlineInput.value ? new Date(datetimeLocalToUtcIso(deadlineInput.value)) - new Date(datetimeLocalToUtcIso(earliestInput.value)) : 0;
+    earliestInput.value = now;
+    if (winMs > 0) deadlineInput.value = toDatetimeLocalValue(new Date(new Date(clockIso).getTime() + winMs).toISOString());
+  }
+  deadlineInput.min = earliestInput.value || now;
+}
+function startsInPast() {
+  return Boolean(clockIso && earliestInput.value && earliestInput.value < toDatetimeLocalValue(clockIso));
 }
 
 /* ---------- estimate (dc: est) ---------- */
@@ -244,7 +258,8 @@ function updateEstimate() {
   );
   const note = $("est-note");
   let bad = true;
-  if (isNaN(winH) || winH <= 0) note.textContent = "The deadline must be after the earliest start.";
+  if (startsInPast()) note.textContent = "The earliest start can't be before now.";
+  else if (isNaN(winH) || winH <= 0) note.textContent = "The deadline must be after the earliest start.";
   else if (winH < t.dur) note.textContent = "The window is shorter than the runtime, so this job can never finish.";
   else {
     note.textContent = `${winH - t.dur} h of slack gives the scheduler room to choose cheaper water.`;
@@ -258,7 +273,7 @@ function renderList() {
   const list = myJobs();
   $("jobs-skeleton").hidden = true;
   $("jobs-empty").hidden = list.length > 0;
-  $("list-note").textContent = `${list.length} job${list.length === 1 ? "" : "s"} · simulated`;
+  $("list-note").textContent = `${list.length} job${list.length === 1 ? "" : "s"}`;
   const keep = new Set();
   const frag = [];
   for (const job of list) {
@@ -304,7 +319,7 @@ function renderDetail() {
   const title = $("d-title");
   title.textContent = `${shortJobId(job.id)} · ${tplName(job.template)}`;
   title.title = job.id;
-  $("d-spec").textContent = `${job.gpu_count} GPUs · ${fmtHours(dur)} h runtime · simulated`;
+  $("d-spec").textContent = `${job.gpu_count} GPUs · ${fmtHours(dur)} h runtime`;
   const pill = $("d-pill");
   pill.replaceChildren(statusDot(status), statusWord(status));
   pill.classList.toggle("isBad", bad);
@@ -321,7 +336,7 @@ function renderDetail() {
 
   const failed = $("d-failed");
   failed.hidden = !bad;
-  if (status === "failed") failed.replaceChildren(el("strong", { text: "This job failed." }), ` The simulation reported a failure${placed ? ` on ${siteName(job.assigned_site_id)}` : ""}. No result was produced.`);
+  if (status === "failed") failed.replaceChildren(el("strong", { text: "This job failed." }), ` It stopped${placed ? ` on ${siteName(job.assigned_site_id)}` : ""} before finishing. No result was produced.`);
   if (status === "unfulfilled") failed.replaceChildren(el("strong", { text: "This job is unfulfilled." }), " The scheduler could not fit it on any eligible site before its deadline. No result was produced.");
 
   // journey
@@ -335,8 +350,8 @@ function renderDetail() {
   const labels = ["Submitted", "Placed", "Running", lastLabel];
   const endMs = jobEnd(job);
   const times = [
-    stampUtc(o.firstSeen),
-    placed ? (o.placedSeen ? stampUtc(o.placedSeen) : "—") : "waiting",
+    o.firstSeen ? stampUtc(o.firstSeen) : "",
+    placed ? (o.placedSeen ? stampUtc(o.placedSeen) : "") : "waiting",
     startMs != null && placed ? (phase >= 2 ? stampUtc(startMs) : `est. ${stampUtc(startMs)}`) : "—",
     job.completed_at ? stampUtc(job.completed_at) : endMs != null && placed && !bad ? `est. ${stampUtc(endMs)}` : "—",
   ];
@@ -344,16 +359,16 @@ function renderDetail() {
   if (status === "scheduled") {
     if (startMs != null && clockMs != null) {
       const inH = Math.ceil((startMs - clockMs) / HOUR_MS);
-      progressLine = inH > 0 ? `Placed. Starts at ${hhmm(startMs)} UTC, in ${inH} simulated hour${inH === 1 ? "" : "s"}.` : `Placed. Starts at ${hhmm(startMs)} UTC.`;
+      progressLine = inH > 0 ? `Starts at ${hhmm(startMs)} UTC, in ${inH} hour${inH === 1 ? "" : "s"}.` : `Starts at ${hhmm(startMs)} UTC.`;
     } else progressLine = "Placed. Start time not set yet.";
   }
   if (status === "running") {
     progressLine =
       startMs != null && clockMs != null
-        ? `Simulated runtime: ${fmtHours(Math.max(0, (clockMs - startMs) / HOUR_MS))} h of ${fmtHours(dur)} h · ${Math.round(prog * 100)}%`
-        : "Running. Simulated runtime unavailable (no scheduled start).";
+        ? `${fmtHours(Math.max(0, (clockMs - startMs) / HOUR_MS))} h of ${fmtHours(dur)} h · ${Math.round(prog * 100)}%`
+        : "Running.";
   }
-  if (status === "completed") progressLine = `Finished. Simulated runtime: ${fmtHours(dur)} h of ${fmtHours(dur)} h · 100%`;
+  if (status === "completed") progressLine = `Finished · ${fmtHours(dur)} h runtime`;
   if (status === "failed") progressLine = "Stopped. No result was produced.";
   if (status === "unfulfilled") progressLine = "Not placed before the deadline.";
 
@@ -419,7 +434,6 @@ function renderDetail() {
   $("d-site").textContent = siteName(job.assigned_site_id);
   $("d-start").textContent = placed && startMs != null ? stampUtc(startMs) : "—";
   $("d-dl").textContent = stampUtc(job.deadline);
-  $("d-es").textContent = `${stampUtc(job.earliest_start)} UTC`;
   $("act-count").textContent = `${o.events.length} event${o.events.length === 1 ? "" : "s"}`;
   $("d-site").classList.toggle("isMuted", !placed);
   const icon = $("d-icon");
@@ -429,21 +443,22 @@ function renderDetail() {
   const grokPanel = $("d-grok");
   const showResult = status === "completed" || !!job.result_url;
   if (grokPanel) {
+    // If the summary service is not set up, leave the card out rather than show a config error.
     const showGrok = status === "completed";
     grokPanel.hidden = !showGrok;
     if (showGrok) {
       if (isGrokLoading && grokJobId === job.id) {
         $("d-grok-title").textContent = "Generating summary…";
-        $("d-grok-text").textContent = "Asking Grok for a two-sentence ops brief.";
+        $("d-grok-text").textContent = "Writing a short brief of this run.";
       } else if (grokJobId === job.id && grokSummary) {
-        $("d-grok-title").textContent = "Ready before download";
+        $("d-grok-title").textContent = "Run summary";
         $("d-grok-text").textContent = grokSummary;
       } else if (grokJobId === job.id && grokError) {
         $("d-grok-title").textContent = "Summary unavailable";
         $("d-grok-text").textContent = grokError;
       } else {
-        $("d-grok-title").textContent = "xAI ops brief";
-        $("d-grok-text").textContent = "Preparing executive summary…";
+        $("d-grok-title").textContent = "Run summary";
+        $("d-grok-text").textContent = "Preparing summary…";
         loadGrokSummary(job.id);
       }
     }
@@ -564,6 +579,7 @@ async function loadAll({ first = false } = {}) {
       if (!earliestInput.value) earliestInput.value = toDatetimeLocalValue(clockIso);
       if (!deadlineInput.value) deadlineInput.value = toDatetimeLocalValue(addHoursToIso(clockIso, DEFAULT_WINDOW_HOURS));
     }
+    syncDateFloor();
     for (const job of jobs) observe(job, false);
     syncNotifications(notesResp);
     if (!selectedJobId || !jobs.some((j) => j.id === selectedJobId)) selectedJobId = myJobs()[0]?.id || null;
@@ -597,6 +613,7 @@ function showFormError(msg) {
 
 form.addEventListener("input", () => {
   showFormError(null);
+  deadlineInput.min = earliestInput.value || earliestInput.min;
   updateEstimate();
 });
 form.addEventListener("change", updateEstimate);
@@ -606,6 +623,7 @@ form.addEventListener("submit", async (event) => {
   if (submitting) return;
   const t = TEMPLATES[selectedTemplate()];
   const winH = windowHours();
+  if (startsInPast()) return showFormError(`The earliest start can't be before now (${clockText(clockIso)}).`);
   if (isNaN(winH) || winH <= 0) return showFormError("Deadline must be after the earliest start.");
   if (winH < t.dur) return showFormError(`The window is shorter than the ${t.dur} h runtime. Move the deadline later.`);
   if (DEMO) return showFormError("Visual demo mode uses labeled sample data and never sends jobs. Turn off Visual demo to submit to the API.");
@@ -635,6 +653,8 @@ form.addEventListener("submit", async (event) => {
 function openSheet() {
   if (sheet.open) return;
   showFormError(null);
+  syncDateFloor();
+  updateEstimate();
   sheet.showModal();
   form.querySelector('input[name="template"]:checked')?.focus();
 }
@@ -680,6 +700,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 $("brand").prepend(logoSvg());
+initChrome();
 updateEstimate();
 loadAll({ first: true }).then(startPoll);
 
