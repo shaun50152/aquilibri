@@ -20,6 +20,15 @@ class HourlySiteProfile(BaseModel):
         ge=0,
         description="Optional hourly water withdrawal cap (L/h); null means no explicit cap.",
     )
+    baseline_water_cap_liters_per_hour: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Permanent site water cap before any temporary emergency overlay. "
+            "Set only when water_cap_liters_per_hour has been tightened for an emergency window; "
+            "used by the UI to scale tanks so load drops visibly when jobs leave."
+        ),
+    )
 
 
 class SiteProfile(BaseModel):
@@ -28,5 +37,17 @@ class SiteProfile(BaseModel):
     hourly_profiles: list[HourlySiteProfile]
 
 
+class TemporaryWaterRestriction(BaseModel):
+    """Active emergency water override — time-bounded, not a permanent site limit."""
+
+    site_id: str
+    water_cap_liters_per_hour: float = Field(ge=0)
+    start: datetime
+    end: datetime
+    temporary: bool = True
+    label: str = "temporary emergency water restriction"
+
+
 class SiteListResponse(BaseModel):
     sites: list[SiteProfile]
+    temporary_restriction: Optional[TemporaryWaterRestriction] = None

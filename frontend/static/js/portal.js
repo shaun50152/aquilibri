@@ -167,15 +167,22 @@ function renderMini() {
   const flowSites = shown.map((s) => {
     const m = siteHourModel(s, jobs, tMs);
     const k = live.filter((j) => j.assigned_site_id === s.site_id).length;
-    const over = m.c != null && m.w > m.c;
+    const over = Boolean(m.over);
     const isSel = Boolean(sel && sel.assigned_site_id === s.site_id);
+    const tempTight = m.c != null && m.scaleC != null && m.c < m.scaleC - 0.5;
+    let fig = over ? `▲ ${fmtNum(m.w)} L/h` : `${fmtNum(m.w)} L/h`;
+    let figTone = over ? "over" : "";
+    if (!over && tempTight && m.gpus === 0) {
+      fig = `${fmtNum(m.w)} L/h · cleared`;
+      figTone = "good";
+    }
     return {
       key: s.site_id,
       name: s.name.replace(/ DC$/, ""),
-      fig: over ? `▲ ${fmtNum(m.w)} L/h` : `${fmtNum(m.w)} L/h`,
-      figTone: over ? "over" : "",
-      sub: `${k ? `${k} of your job${k === 1 ? "" : "s"}` : "None of yours"} · ${m.gpus} GPUs busy`,
-      w: m.w, c: m.c, weight: m.u / 100, active: m.gpus > 0, over,
+      fig,
+      figTone,
+      sub: `${k ? `${k} of your job${k === 1 ? "" : "s"}` : "None of yours"} · ${m.gpus} GPUs busy${tempTight && !over ? " · temp emergency" : ""}`,
+      w: m.w, c: m.c, scaleC: m.scaleC, weight: m.u / 100, active: m.gpus > 0, over,
       highlight: isSel,
     };
   });

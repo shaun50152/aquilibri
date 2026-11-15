@@ -168,3 +168,7 @@ class ReallocationApplyResponse(BaseModel):
     applied: bool
     revision: int
     message: str
+    temporary_restriction: Optional[EmergencyRestriction] = Field(
+        default=None,
+        description="Active time-bounded emergency water cap after apply (not permanent).",
+    )

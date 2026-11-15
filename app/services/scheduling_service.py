@@ -1000,6 +1000,7 @@ def _emergency_preview(
                 proposed_assignments=assignments,
                 unfulfilled_job_ids=tuple(sorted(unfulfilled)),
                 response=response,
+                emergency_restriction=er,
             )
         )
     return response
@@ -1145,10 +1146,24 @@ def _apply_reallocation_locked(request: ReallocationApplyRequest) -> Reallocatio
             )
         job_repository.save_job(updated)
 
+    # Persist temporary emergency water cap into the live session (time-bounded).
+    temporary = record.emergency_restriction
+    if temporary is not None:
+        state.active_temporary_restriction = temporary
+
     revision = job_repository.bump_revision()
     delete_stored_preview(request.preview_id)
+    msg = "Applied reallocation preview."
+    if temporary is not None:
+        msg = (
+            "Applied emergency reallocation. Temporary water cap "
+            f"{temporary.water_cap_liters_per_hour:g} L/h on {temporary.site_id} "
+            f"is active from {temporary.start.isoformat()} to {temporary.end.isoformat()} "
+            "(not a permanent site limit)."
+        )
     return ReallocationApplyResponse(
         applied=True,
         revision=revision,
-        message="Applied reallocation preview.",
+        message=msg,
+        temporary_restriction=temporary,
     )

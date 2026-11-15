@@ -17,7 +17,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
-from app.schemas.scheduling import ProposedAssignment, ReallocationPreviewResponse
+from app.schemas.scheduling import (
+    EmergencyRestriction,
+    ProposedAssignment,
+    ReallocationPreviewResponse,
+)
 
 
 @dataclass
@@ -30,6 +34,7 @@ class StoredPreview:
     proposed_assignments: list[ProposedAssignment]
     unfulfilled_job_ids: tuple[str, ...]
     response: ReallocationPreviewResponse
+    emergency_restriction: EmergencyRestriction | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now().astimezone())
 
 

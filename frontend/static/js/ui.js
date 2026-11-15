@@ -198,11 +198,20 @@ function siteHourModel(site, jobs, tMs) {
     if (s < t1 && e > t0) gpus += j.gpu_count;
   }
   const cap = p?.gpu_capacity || 0;
+  const fixed = p ? p.fixed_water_liters_per_hour : 0;
+  const inc = p ? p.incremental_water_liters_per_gpu_hour * gpus : 0;
+  const activeCap = p?.water_cap_liters_per_hour ?? null;
+  const baselineCap = p?.baseline_water_cap_liters_per_hour ?? activeCap;
   return {
     gpus,
     u: cap ? Math.round((gpus / cap) * 100) : 0,
-    w: p ? p.fixed_water_liters_per_hour + p.incremental_water_liters_per_gpu_hour * gpus : 0,
-    c: p?.water_cap_liters_per_hour ?? null,
+    fixed,
+    inc,
+    w: fixed + inc,
+    c: activeCap,
+    scaleC: baselineCap,
+    // Red only when job load is what breaches the active (possibly temporary) cap.
+    over: activeCap != null && fixed + inc >= activeCap && gpus > 0,
   };
 }
 
@@ -353,7 +362,9 @@ function drawFlow(root, view) {
   for (const r of view.routes || []) if (!routeTo.has(r.to)) routeTo.set(r.to, r);
   for (const s of view.sites) {
     const N = F.nodes.get(s.key);
-    const scale = Math.max(s.w || 0, s.c || 0, s.ghost || 0, 1) / 0.82;
+    // Scale against the permanent baseline cap when a temporary emergency cap is active,
+    // so evacuating jobs visibly lowers the bar instead of re-normalizing to a tiny temp cap.
+    const scale = Math.max(s.w || 0, s.scaleC || 0, s.c || 0, s.ghost || 0, 1) / 0.82;
     const frac = (v) => `${(Math.max(0, Math.min(1, v / scale)) * 100).toFixed(1)}%`;
     N.water.style.height = frac(s.w || 0);
     N.capLine.style.bottom = s.c != null ? frac(s.c) : "";
@@ -546,7 +557,8 @@ function niceStep(raw) {
 }
 
 /**
- * view: { labels:[hour labels], cur:[L/h], prop:[L/h]|null, caps:[L/h|null], win:[i0,i1]|null,
+ * view: { labels:[hour labels], cur:[L/h], prop:[L/h]|null, caps:[L/h|null],
+ *         scaleCaps:[L/h|null]|null, breach:[bool]|null, win:[i0,i1]|null,
  *         nowIdx:number|null, applied:bool, capLabel:string|null }
  */
 function drawWaterChart(svgEl, view) {
@@ -580,7 +592,13 @@ function drawWaterChart(svgEl, view) {
 
   const n = view.labels.length;
   const X = (i) => 64 + (n > 1 ? i * (712 / (n - 1)) : 356);
-  const all = [...view.cur, ...(view.prop || []), ...view.caps.filter((c) => c != null)];
+  const scaleCaps = view.scaleCaps || [];
+  const all = [
+    ...view.cur,
+    ...(view.prop || []),
+    ...view.caps.filter((c) => c != null),
+    ...scaleCaps.filter((c) => c != null),
+  ];
   const step = niceStep(Math.max(...all, 1) / 3);
   const top = step * 3;
   const Y = (v) => 232 - (v / top) * 200;
@@ -617,7 +635,7 @@ function drawWaterChart(svgEl, view) {
   L.cap.setAttribute("d", capD.trim());
   L.cap.style.opacity = capD ? "1" : "0";
 
-  // violation area where current exceeds the cap
+  // Violation hatch only where job load breaches the active cap (not fixed-only floor).
   let violD = "";
   let run = [];
   const flush = () => {
@@ -628,7 +646,11 @@ function drawWaterChart(svgEl, view) {
     }
     run = [];
   };
-  view.cur.forEach((v, i) => (view.caps[i] != null && v > view.caps[i] ? run.push(i) : flush()));
+  view.cur.forEach((v, i) => {
+    const jobBreach = view.breach ? view.breach[i] : view.caps[i] != null && v > view.caps[i];
+    if (jobBreach) run.push(i);
+    else flush();
+  });
   flush();
   L.viol.setAttribute("d", violD.trim());
   L.viol.style.opacity = violD && !view.applied ? "1" : "0";

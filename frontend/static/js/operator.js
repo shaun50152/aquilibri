@@ -82,31 +82,54 @@ function gpusAt(siteId, t0, list) {
   }
   return g;
 }
+function baselineCapAt(site, t) {
+  const p = profileAt(site, t);
+  if (!p) return null;
+  if (p.baseline_water_cap_liters_per_hour != null) return p.baseline_water_cap_liters_per_hour;
+  // Before the temporary overlay lands in /api/sites, the profile still holds the permanent cap.
+  if (declared && declared.site_id === site.site_id && t >= ms(declared.start) && t < ms(declared.end)) {
+    return p.water_cap_liters_per_hour ?? null;
+  }
+  return p.water_cap_liters_per_hour ?? null;
+}
 function capAt(site, t) {
+  // Prefer caps already baked into GET /api/sites (includes active temporary emergency).
   const p = profileAt(site, t);
   let c = p?.water_cap_liters_per_hour ?? null;
+  // Client-side declared restriction (pre-apply / local form) still overlays until sites refresh.
   if (declared && declared.site_id === site.site_id && t >= ms(declared.start) && t < ms(declared.end)) {
     c = c == null ? declared.water_cap_liters_per_hour : Math.min(c, declared.water_cap_liters_per_hour);
   }
   return c;
 }
+function isBottleneckHour(h) {
+  // Red only when *job* load pushes total water to/over the active cap.
+  // Facility fixed water alone (0 GPUs) is not a scheduler bottleneck — after
+  // emergency reallocation empties a site, the warning clears even if fixed > temp cap.
+  return h.c != null && h.w >= h.c && h.gpus > 0;
+}
 function hourModel(site, t, list) {
   const p = profileAt(site, t);
   const g = gpusAt(site.site_id, t, list);
   const cap = p?.gpu_capacity || 0;
+  const fixed = p ? p.fixed_water_liters_per_hour : 0;
+  const inc = p ? p.incremental_water_liters_per_gpu_hour * g : 0;
   return {
     t,
     gpus: g,
     u: cap ? Math.round((g / cap) * 100) : 0,
-    w: p ? p.fixed_water_liters_per_hour + p.incremental_water_liters_per_gpu_hour * g : 0,
+    fixed,
+    inc,
+    w: fixed + inc,
     c: capAt(site, t),
+    scaleC: baselineCapAt(site, t),
   };
 }
 function siteModel(site, list) {
   const hours = hourList();
   const series = hours.map((t) => hourModel(site, t, list));
   const now = hourModel(site, currentHour(), list);
-  const over = series.filter((h) => h.c != null && h.w > h.c);
+  const over = series.filter((h) => isBottleneckHour(h));
   let worst = null;
   for (const h of over) if (!worst || h.w - h.c > worst.w - worst.c) worst = h;
   let peak = series[0] || now;
@@ -166,11 +189,26 @@ function renderBand(D) {
   const restricted = declared ? siteOf(declared.site_id) : null;
   const rModel = restricted ? D.models.find((m) => m.site === restricted) : null;
   if (applied && previewState !== "ready") {
+    const siteOk = !restricted || !rModel || rModel.overH === 0;
+    const fleetOk = D.breaches.length === 0;
+    const resolved = siteOk && fleetOk;
     b = {
-      tone: "done", kick: `Applied · revision ${applied.revision ?? revision}`,
-      title: D.breaches.length ? "Plan applied." : "Equilibrium restored.",
-      sub: rModel && rModel.peak ? `${siteShort(restricted)} peaks at ${fmtNum(rModel.peak.w)} L/h${rModel.peak.c != null ? ` against a ${fmtNum(rModel.peak.c)} L/h cap` : ""} (modeled). The portal shows the new assignments.` : "The portal shows the new assignments.",
-      dash: "0", icon: ICON_OK,
+      tone: resolved ? "done" : "alert",
+      kick: declared
+        ? `Temporary emergency applied · revision ${applied.revision ?? revision}`
+        : `Applied · revision ${applied.revision ?? revision}`,
+      title: resolved ? "Emergency mitigated." : "Plan applied — residual overage remains.",
+      sub: declared
+        ? `Temporary ${fmtNum(declared.water_cap_liters_per_hour)} L/h window on ${siteShort(restricted)} (${hhmm(declared.start)}–${hhmm(declared.end)} UTC) is active — not a permanent site limit. ${
+            resolved
+              ? "Modeled withdrawal is now under that temporary cap after reallocation."
+              : `${siteShort(restricted)} still models ${rModel?.overH || 0} h at/over the temporary cap.`
+          }`
+        : rModel && rModel.peak
+          ? `${siteShort(restricted)} peaks at ${fmtNum(rModel.peak.w)} L/h${rModel.peak.c != null ? ` against ${fmtNum(rModel.peak.c)} L/h` : ""} (modeled).`
+          : "The portal shows the new assignments.",
+      dash: "0",
+      icon: resolved ? ICON_OK : ICON_ALERT,
     };
   } else if (D.stale) {
     b = { tone: "alert", kick: "Stale preview", title: "The queue changed after this plan was made.", sub: `Revision ${preview.input_revision} to ${revision}. Apply is locked until you preview again.`, dash: "3 4", icon: ICON_ALERT };
@@ -190,11 +228,11 @@ function renderBand(D) {
     const over = rModel.overH > 0;
     b = {
       tone: over ? "alert" : "info",
-      kick: `Water restriction · ${restricted.name}`,
-      title: `${fmtNum(declared.water_cap_liters_per_hour)} L/h cap from ${hhmm(declared.start)} to ${hhmm(declared.end)} UTC`,
+      kick: `Temporary water restriction · ${restricted.name}`,
+      title: `${fmtNum(declared.water_cap_liters_per_hour)} L/h temporary cap · ${hhmm(declared.start)}–${hhmm(declared.end)} UTC`,
       sub: over
-        ? `${siteShort(restricted)} is projected at ${fmtNum(rModel.worst.w)} L/h (modeled), over the cap for ${rModel.overH} hour${rModel.overH === 1 ? "" : "s"}.`
-        : `${siteShort(restricted)} stays within it at a modeled peak of ${fmtNum(rModel.peak.w)} L/h.`,
+        ? `${siteShort(restricted)} is projected at ${fmtNum(rModel.worst.w)} L/h (modeled), at/over the temporary cap for ${rModel.overH} hour${rModel.overH === 1 ? "" : "s"}. This limit is temporary — preview a reallocation to mitigate.`
+        : `${siteShort(restricted)} stays within the temporary window at a modeled peak of ${fmtNum(rModel.peak.w)} L/h.`,
       dash: "0", icon: over ? ICON_ALERT : ICON_OK, cta: over,
     };
   } else if (D.breaches.length) {
@@ -251,28 +289,33 @@ function renderRing(D) {
     const ghost = pm && moved.has(s.site_id) ? (pm.series.find((x) => x.t === h.t) || pm.peak).w : null;
     const over = m.overH > 0;
     const shifts = ghost != null && Math.abs(ghost - h.w) > 0.5;
-    let fig = h.c != null ? `${fmtNum(h.w)} / ${fmtNum(h.c)} L/h` : `${fmtNum(h.w)} L/h · no cap`;
+    const displayCap = h.scaleC != null ? h.scaleC : h.c;
+    const tempTight = h.c != null && h.scaleC != null && h.c < h.scaleC - 0.5;
+    let fig = displayCap != null ? `${fmtNum(h.w)} / ${fmtNum(displayCap)} L/h` : `${fmtNum(h.w)} L/h · no cap`;
     let figTone = "";
     if (over) {
       fig = `▲ ${fmtNum(h.w)} / ${fmtNum(h.c)} L/h`;
       figTone = "over";
+    } else if (tempTight && h.gpus === 0) {
+      fig = `${fmtNum(h.w)} L/h · cleared`;
+      figTone = "good";
     }
     if (shifts) {
       fig = `${fmtNum(h.w)} → ${fmtNum(ghost)} L/h`;
       figTone = ghost < h.w ? "good" : "";
     }
     const here = jobs.filter((j) => j.assigned_site_id === s.site_id && (j.status === "running" || j.status === "scheduled")).length;
-    const sub = `${h.u}% GPU · ${here} job${here === 1 ? "" : "s"}${over ? ` · ${m.overH} h over cap` : ""} · at ${hhmm(h.t)}`;
+    const sub = `${h.u}% GPU · ${here} job${here === 1 ? "" : "s"}${over ? ` · ${m.overH} h over cap` : tempTight && !over ? " · temp emergency cleared" : ""} · at ${hhmm(h.t)}`;
     const aria =
       `${s.name}: peak modeled withdrawal ${fmtNum(h.w)} liters per hour at ${hhmm(h.t)} UTC` +
-      (h.c != null ? ` against a cap of ${fmtNum(h.c)}` : ", no cap that hour") +
+      (h.c != null ? ` against an active cap of ${fmtNum(h.c)}` : ", no cap that hour") +
       `, ${h.u} percent GPU load from assignments` +
-      (over ? `, over cap for ${m.overH} modeled hour${m.overH === 1 ? "" : "s"}` : ", within cap") +
+      (over ? `, over cap for ${m.overH} modeled hour${m.overH === 1 ? "" : "s"}` : ", within schedulable cap") +
       (ghost != null ? `, proposed ${fmtNum(ghost)} liters per hour` : "") +
       ". Simulated. Opens site details.";
     return {
       key: s.site_id, name: s.name.replace(/ DC$/, ""), fig, figTone, sub,
-      w: h.w, c: h.c, ghost, weight: h.u / 100, active: h.u > 0, over, aria,
+      w: h.w, c: h.c, scaleC: h.scaleC, ghost, weight: h.u / 100, active: h.u > 0, over, aria,
       selected: selSite === s.site_id,
       land: showApplied && landSites.has(s.site_id) ? applied.key : "",
       onClick: () => {
@@ -366,8 +409,10 @@ function renderDrawer(D) {
   $("dr-water").textContent = `${fmtNum(m.now.w)} L/h`;
   $("dr-cap").textContent = m.now.c != null ? `${fmtNum(m.now.c)} L/h` : "No cap";
   const st = $("dr-status");
-  if (m.overH > 0) st.textContent = `▲ Over cap by ${fmtNum(m.worst.w - m.worst.c)} L/h at ${hhmm(m.worst.t)} UTC · ${m.overH} h over (modeled)`;
-  else if (m.now.c != null) st.textContent = `✓ Within cap with ${fmtNum(m.now.c - m.now.w)} L/h spare`;
+  if (m.overH > 0) st.textContent = `▲ Job load over cap by ${fmtNum(m.worst.w - m.worst.c)} L/h at ${hhmm(m.worst.t)} UTC · ${m.overH} h over (modeled)`;
+  else if (m.now.c != null && m.now.gpus === 0 && m.now.w > m.now.c) {
+    st.textContent = `✓ Temporary emergency cleared — no scheduled GPUs; facility baseline ${fmtNum(m.now.fixed)} L/h remains`;
+  } else if (m.now.c != null) st.textContent = `✓ Within cap with ${fmtNum(Math.max(0, m.now.c - m.now.w))} L/h spare`;
   else st.textContent = "✓ No hourly cap this hour";
   st.classList.toggle("isOver", m.overH > 0);
   const here = jobs.filter((j) => j.assigned_site_id === m.site.site_id && j.status !== "completed" && j.status !== "failed").map((j) => shortJobId(j.id));
@@ -554,11 +599,11 @@ function renderChart(D) {
   const site = siteOf(id);
   const hours = hourList();
   const showApplied = applied && previewState !== "ready";
-  const baseJobs = showApplied && applied.beforeJobs ? applied.beforeJobs : jobs;
-  const cur = hours.map((t) => hourModel(site, t, baseJobs).w);
+  // Solid line = live allocations (post-apply when applied). Dashed = proposed, or pre-apply ghost.
+  const cur = hours.map((t) => hourModel(site, t, jobs).w);
   let prop = null;
   if (D.showProposed) prop = hours.map((t) => hourModel(site, t, patchJobs(jobs, D.changes)).w);
-  else if (showApplied) prop = hours.map((t) => hourModel(site, t, jobs).w);
+  else if (showApplied && applied.beforeJobs) prop = hours.map((t) => hourModel(site, t, applied.beforeJobs).w);
   const caps = hours.map((t) => capAt(site, t));
   let win = null;
   let capLabel = null;
@@ -575,13 +620,27 @@ function renderChart(D) {
   }
   const nowIdx = hours.length ? (ms(clockIso) - hours[0]) / HOUR_MS : null;
   $("chart-title").textContent = `${siteShort(site)} · water by hour`;
-  const peak = Math.max(...cur);
-  const overN = cur.filter((w, i) => caps[i] != null && w > caps[i]).length;
+  const peak = Math.max(...cur, 0);
+  const series = hours.map((t) => hourModel(site, t, jobs));
+  const overN = series.filter((h) => isBottleneckHour(h)).length;
+  const scaleCaps = hours.map((t) => baselineCapAt(site, t));
   const aria = `${site.name} modeled hourly water over ${hours.length} hours, peaking at ${fmtNum(peak)} liters per hour. ` +
-    (overN ? `${overN} hour${overN === 1 ? " is" : "s are"} over the cap.` : "No hour is over its cap.") +
-    (prop ? ` ${showApplied ? "Applied" : "Proposed"} schedule peaks at ${fmtNum(Math.max(...prop))}.` : "");
+    (overN ? `${overN} hour${overN === 1 ? " is" : "s are"} at/over the active cap with scheduled GPU load.` : "No hour has scheduled load at/over its active cap.") +
+    (prop ? ` ${showApplied ? "Pre-apply" : "Proposed"} schedule peaks at ${fmtNum(Math.max(...prop))}.` : "") +
+    (declared && declared.site_id === id ? " Temporary emergency cap is highlighted." : "");
   $("water-chart").setAttribute("aria-label", aria);
-  drawWaterChart($("water-chart"), { labels: hours.map((t) => pad2(new Date(t).getUTCHours())), cur, prop, caps, win, nowIdx, applied: showApplied, capLabel });
+  drawWaterChart($("water-chart"), {
+    labels: hours.map((t) => pad2(new Date(t).getUTCHours())),
+    cur,
+    prop,
+    caps,
+    scaleCaps,
+    breach: series.map((h) => isBottleneckHour(h)),
+    win,
+    nowIdx,
+    applied: showApplied,
+    capLabel,
+  });
 }
 
 /* ---------- queue ---------- */
@@ -625,12 +684,35 @@ function renderCompliance(D) {
   const box = $("compliance");
   const rows = [];
   const showApplied = applied && previewState !== "ready";
-  const solver = D.showProposed ? preview : showApplied ? applied.preview : null;
-  if (solver?.per_site_water?.length) {
-    $("comp-kick").textContent = "Cap compliance · solver";
-    for (const sw of solver.per_site_water) {
+  // After apply: always score live jobs vs active (temporary) caps — never freeze old breach flags.
+  if (showApplied || !D.showProposed) {
+    $("comp-kick").textContent = declared
+      ? "Cap compliance · temporary emergency (live)"
+      : "Cap compliance · modeled";
+    for (const m of D.models) {
+      if (!m.series.some((h) => h.c != null)) continue;
+      const ref = m.worst || m.peak;
+      const over = m.overH > 0;
+      const label = over
+        ? "Bottlenecked"
+        : showApplied
+          ? declared
+            ? "Resolved under temporary cap"
+            : "Compliant"
+          : "Within cap";
+      rows.push([
+        m.site.name,
+        `${fmtNum(ref.w)} / ${ref.c != null ? fmtNum(ref.c) : "—"} L/h · ${m.overH} h at/over`,
+        over ? "▲" : "✓",
+        label,
+        over,
+      ]);
+    }
+  } else if (preview?.per_site_water?.length) {
+    $("comp-kick").textContent = "Cap compliance · solver preview";
+    for (const sw of preview.per_site_water) {
       const over = sw.water_cap_violations > 0;
-      rows.push([nameOf(sw.site_id), `${fmtNum(sw.water_liters)} L · ${sw.water_cap_violations} h over`, over ? "▲" : "✓", over ? "Over cap" : showApplied ? "Compliant" : "Within cap", over]);
+      rows.push([nameOf(sw.site_id), `${fmtNum(sw.water_liters)} L · ${sw.water_cap_violations} h over`, over ? "▲" : "✓", over ? "Over cap" : "Within cap", over]);
     }
   } else {
     $("comp-kick").textContent = "Cap compliance · modeled";
@@ -779,7 +861,22 @@ async function onApply() {
     DEMO.jobs.jobs = patchJobs(DEMO.jobs.jobs, preview.proposed_job_changes);
     DEMO.jobs.revision += 1;
     DEMO.revision = DEMO.jobs.revision;
-    res = { applied: true, revision: DEMO.jobs.revision, message: "" };
+    res = {
+      applied: true,
+      revision: DEMO.jobs.revision,
+      message: declared
+        ? `Applied temporary emergency cap on ${declared.site_id} (visual demo).`
+        : "Applied (visual demo).",
+      temporary_restriction: declared
+        ? {
+            site_id: declared.site_id,
+            water_cap_liters_per_hour: declared.water_cap_liters_per_hour,
+            start: declared.start,
+            end: declared.end,
+            temporary: true,
+          }
+        : null,
+    };
   } else {
     try {
       res = await applyReallocation({ preview_id: preview.preview_id, input_revision: preview.input_revision });
@@ -797,8 +894,18 @@ async function onApply() {
   applied = { preview, revision: res.revision, message: res.message || "", beforeJobs: before, key: String(Date.now()) };
   preview = null;
   previewState = "none";
+  // Keep / refresh the temporary emergency window so caps stay active after apply.
+  if (res.temporary_restriction) {
+    declared = {
+      site_id: res.temporary_restriction.site_id,
+      water_cap_liters_per_hour: res.temporary_restriction.water_cap_liters_per_hour,
+      start: res.temporary_restriction.start,
+      end: res.temporary_restriction.end,
+    };
+  }
   updatePreviewButton();
-  toast(`Plan applied · revision ${res.revision}.`);
+  toast(res.message || `Plan applied · revision ${res.revision}.`);
+  // Re-fetch jobs + sites (sites now include the temporary emergency water caps).
   await loadAll();
 }
 
@@ -820,6 +927,19 @@ async function loadAll() {
     setError($("op-error"), null);
     clockIso = demo.current_time;
     sites = sitesResp.sites || [];
+    // Server-active temporary emergency (after apply) drives caps + band copy.
+    if (sitesResp.temporary_restriction) {
+      const tr = sitesResp.temporary_restriction;
+      declared = {
+        site_id: tr.site_id,
+        water_cap_liters_per_hour: tr.water_cap_liters_per_hour,
+        start: tr.start,
+        end: tr.end,
+      };
+      if ($("emer-site") && [...$("emer-site").options].some((o) => o.value === tr.site_id)) {
+        fillFieldsFrom(declared);
+      }
+    }
     const next = jobsResp.jobs || [];
     noteJobChanges(next);
     jobs = next;

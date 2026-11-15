@@ -12,6 +12,7 @@ from typing import Any
 from app.config import DEMO_CLOCK_ANCHOR_ISO, FIXTURES_DIR, get_settings
 from app.schemas.jobs import Job
 from app.schemas.notifications import CompletionNotification
+from app.schemas.scheduling import EmergencyRestriction
 from app.schemas.sites import SiteProfile
 
 
@@ -30,13 +31,29 @@ class SessionState:
     sites_fixture_name: str = "sites.json"
     execution_epoch: int = 1
     notifications: list[CompletionNotification] = field(default_factory=list)
+    # Time-bounded emergency water override (cleared on reset / after window ends).
+    active_temporary_restriction: EmergencyRestriction | None = None
     _jobs_fixture: list[dict[str, Any]] = field(default_factory=list, repr=False)
+
+    def clear_temporary_restriction(self) -> None:
+        self.active_temporary_restriction = None
+
+    def get_active_temporary_restriction(self) -> EmergencyRestriction | None:
+        """Return the active temporary cap, expiring it once the demo clock passes end."""
+        er = self.active_temporary_restriction
+        if er is None:
+            return None
+        if self.current_time >= er.end:
+            self.active_temporary_restriction = None
+            return None
+        return er
 
     def reload_from_fixtures(self) -> int:
         """Deep-copy fixture jobs, restore demo clock, increment revision (synthetic mode)."""
         self.jobs = [Job.model_validate(copy.deepcopy(j)) for j in self._jobs_fixture]
         self.current_time = datetime.fromisoformat(DEMO_CLOCK_ANCHOR_ISO)
         self.revision += 1
+        self.clear_temporary_restriction()
         settings = get_settings()
         if settings.is_live:
             from app.integrations.mongodb import get_mongo_job_store
@@ -60,6 +77,7 @@ class SessionState:
         self.notifications = []
         self.current_time = datetime.fromisoformat(DEMO_CLOCK_ANCHOR_ISO)
         self.revision += 1
+        self.clear_temporary_restriction()
         settings = get_settings()
         if settings.is_live:
             from app.integrations.mongodb import get_mongo_job_store
