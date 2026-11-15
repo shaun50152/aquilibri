@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import health, jobs, operator, scheduling, sites
+from app.api import health, jobs, notifications, operator, scheduling, sites
 from app.config import FRONTEND_DIR
 from app.state import init_session_state
 
@@ -27,9 +27,18 @@ app = FastAPI(
 
 app.include_router(health.router)
 app.include_router(jobs.router)
+app.include_router(notifications.router)
 app.include_router(operator.router)
 app.include_router(sites.router)
 app.include_router(scheduling.router)
+
+@app.middleware("http")
+async def revalidate_static(request, call_next):
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

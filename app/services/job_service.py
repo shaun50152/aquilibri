@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 
 from app.repositories import job_repository
 from app.services import scheduling_service
+from app.session_lock import session_mutation
 from app.schemas.jobs import (
     DEMO_OWNER_ID,
     TEMPLATE_DEFINITIONS,
@@ -28,6 +29,11 @@ def list_session_jobs() -> tuple[str, int, list[Job]]:
 
 
 def create_job(payload: JobCreateRequest) -> Job:
+    with session_mutation():
+        return _create_job_locked(payload)
+
+
+def _create_job_locked(payload: JobCreateRequest) -> Job:
     earliest = _ensure_utc(payload.earliest_start)
     deadline = _ensure_utc(payload.deadline)
 
@@ -68,6 +74,7 @@ def create_job(payload: JobCreateRequest) -> Job:
         scheduled_start=None,
         completed_at=None,
         result_url=None,
+        execution_epoch=state.execution_epoch,
     )
 
     placed = scheduling_service.try_place_submitted_job(

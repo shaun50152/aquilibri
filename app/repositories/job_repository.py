@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from app.config import get_settings
 from app.integrations.mongodb import get_mongo_job_store
 from app.schemas.jobs import Job
@@ -14,15 +16,23 @@ def _persist_job(job: Job) -> None:
         get_mongo_job_store().replace_job(state.session_id, job.model_dump(mode="json"))
 
 
-def _persist_revision(revision: int) -> None:
+def persist_session_meta(
+    session_id: str,
+    *,
+    current_time: datetime,
+    revision: int,
+    execution_epoch: int,
+) -> None:
+    state = get_session_state()
+    state.current_time = current_time
+    state.revision = revision
+    state.execution_epoch = execution_epoch
     if get_settings().data_mode == "mongodb":
-        state = get_session_state()
-        store = get_mongo_job_store()
-        store.set_revision(state.session_id, revision)
-        store.set_session_meta(
-            state.session_id,
+        get_mongo_job_store().set_session_meta(
+            session_id,
             revision=revision,
-            current_time=state.current_time.isoformat(),
+            current_time=current_time.isoformat(),
+            execution_epoch=execution_epoch,
         )
 
 
@@ -58,5 +68,10 @@ def next_job_id() -> str:
 def bump_revision() -> int:
     state = get_session_state()
     state.revision += 1
-    _persist_revision(state.revision)
+    persist_session_meta(
+        state.session_id,
+        current_time=state.current_time,
+        revision=state.revision,
+        execution_epoch=state.execution_epoch,
+    )
     return state.revision

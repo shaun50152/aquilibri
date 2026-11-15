@@ -52,6 +52,7 @@ from app.services.preview_store import (
     new_preview_id,
     store_preview,
 )
+from app.session_lock import session_mutation
 from app.state import SessionState, get_session_state
 
 
@@ -1003,6 +1004,11 @@ def try_place_submitted_job(
 
 
 def apply_reallocation(request: ReallocationApplyRequest) -> ReallocationApplyResponse:
+    with session_mutation():
+        return _apply_reallocation_locked(request)
+
+
+def _apply_reallocation_locked(request: ReallocationApplyRequest) -> ReallocationApplyResponse:
     record = get_stored_preview(request.preview_id)
     state = get_session_state()
 

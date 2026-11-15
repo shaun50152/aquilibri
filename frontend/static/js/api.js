@@ -104,8 +104,12 @@ function previewReallocation(body) {
 function applyReallocation(body) {
   return apiRequest("/api/reallocation/apply", { method: "POST", body });
 }
-function advanceDemo() {
-  return apiRequestAllow501("/api/demo/advance", { method: "POST" });
+function advanceDemo(body = {}) {
+  const payload = { hours: body.hours ?? 1, ...(body.expected_revision != null ? { expected_revision: body.expected_revision } : {}) };
+  return apiRequest("/api/demo/advance", { method: "POST", body: payload });
+}
+function getNotifications() {
+  return apiRequest("/api/notifications");
 }
 
 function formatUtc(isoString) {

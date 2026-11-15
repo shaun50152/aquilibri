@@ -67,3 +67,12 @@ def clear_preview_store() -> None:
 def list_preview_ids_for_session(session_id: str) -> list[str]:
     with _lock:
         return [p.preview_id for p in _STORE.values() if p.session_id == session_id]
+
+
+def clear_previews_for_session(session_id: str) -> int:
+    """Remove stored previews for one session (demo reset)."""
+    with _lock:
+        doomed = [pid for pid, p in _STORE.items() if p.session_id == session_id]
+        for pid in doomed:
+            _STORE.pop(pid, None)
+        return len(doomed)
