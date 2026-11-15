@@ -392,6 +392,10 @@ def preview_reallocation(
     state: SessionState,
 ) -> ReallocationPreviewResponse:
     """Compute a preview from the live session snapshot without mutating state."""
+    # Refresh Tiger profiles into session when configured so solver matches GET /api/sites.
+    from app.repositories import telemetry_repository
+
+    telemetry_repository.list_site_profiles()
     snapshot = capture_snapshot(state)
     response = _compute_preview(request, snapshot, persist=True)
     # Stale detection: inputs changed while solving.

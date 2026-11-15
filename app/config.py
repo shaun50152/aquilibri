@@ -37,9 +37,18 @@ class Settings(BaseSettings):
     site_profiles_fixture: str = SITE_PROFILES_SHORT
     mongodb_uri: str = ""
     mongodb_database: str = "aquilibri"
+    # Tiger Data: prefer discrete Postgres env vars; URL kept for compatibility.
     tigerdata_database_url: str = ""
+    pghost: str = ""
+    pgdatabase: str = ""
+    pguser: str = ""
+    pgpassword: str = ""
+    pgport: str = "5432"
+    pgsslmode: str = "require"
+    # When true and Postgres is configured, GET /api/sites + solver prefer Tiger.
+    use_tiger_site_profiles: bool = True
     gemini_api_key: str = ""
-    gemini_model: str = ""
+    gemini_model: str = "gemini-1.5-flash"
 
     def require_supported_data_mode(self) -> None:
         if self.data_mode not in SUPPORTED_DATA_MODES:

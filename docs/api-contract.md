@@ -105,11 +105,20 @@ Emergency:
 - `water_usd`: always 0 (no water tariff in schema)
 - No transfer or delay charges
 
+### `POST /api/operator/chat`
+
+Gemini tool-calling assistant. Same placement engine as manual preview.
+
+```json
+{ "prompt": "Emergency: cap Alpha at 115 L/h from 2026-03-15T20:00:00Z to 2026-03-16T12:00:00Z" }
+```
+
+Returns `assistant_message`, `tool_calls`, and optional `preview` (`ReallocationPreviewResponse`). Manual `POST /api/reallocation/preview` remains fully functional.
+
 ## Still 501
 
 | Method | Path | Request highlights |
 |--------|------|--------------------|
-| POST | `/api/reallocation/apply` | `preview_id`, `input_revision` (Person 1; use `preview_store.get_stored_preview`) |
 | POST | `/api/demo/advance` | (no body) advances simulated clock |
 
 `501` body: `{ "detail": "<reason>" }`.

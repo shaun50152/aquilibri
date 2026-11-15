@@ -18,7 +18,7 @@ This repository is the **HackUTA scaffold**: a runnable local demo using fixture
 - `POST /api/demo/advance` (returns **501**)
 - MongoDB, Tiger Data, Gemini NL parsing, simulated job worker ticks
 
-`POST /api/reallocation/preview` is implemented (routine + emergency MILP) when site telemetry covers the workload. Use `SITE_PROFILES_FIXTURE=sites_extended_synthetic.json` for the runnable demo.
+`POST /api/reallocation/preview` is implemented (routine + emergency MILP). Site profiles prefer Tiger Data when `PG*` env vars are set (`python scripts/seed_tiger_sites.py` seeds tables); otherwise the selected `SITE_PROFILES_FIXTURE` is used. `POST /api/operator/chat` adds Gemini tool-calling on top of the same preview engine without replacing the manual preview route.
 
 See `docs/team-workflow.md` for ownership split.
 

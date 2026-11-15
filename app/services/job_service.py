@@ -45,6 +45,10 @@ def create_job(payload: JobCreateRequest) -> Job:
 
     definition = TEMPLATE_DEFINITIONS[payload.template]
     state = get_session_state()
+    # Align placement with GET /api/sites (Tiger when configured).
+    from app.repositories import telemetry_repository
+
+    telemetry_repository.list_site_profiles()
 
     data_ready: dict[str, datetime] = {}
     for site_id in definition.eligible_site_ids:

@@ -4,7 +4,13 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, status
 
 from app.config import FIXTURES_DIR
-from app.schemas.demo import DemoResetResponse, DemoState
+from app.integrations.gemini import GeminiSchedulingAssistant, GeminiSchedulingError
+from app.schemas.demo import (
+    DemoResetResponse,
+    DemoState,
+    OperatorChatRequest,
+    OperatorChatResponse,
+)
 from app.schemas.scheduling import ReallocationPreviewResponse
 from app.state import get_session_state
 
@@ -59,3 +65,47 @@ def get_sample_reallocation_preview(sample_name: str) -> Any:
     raw = json.loads(path.read_text(encoding="utf-8"))
     data = {k: v for k, v in raw.items() if not k.startswith("_")}
     return ReallocationPreviewResponse.model_validate(data)
+
+
+@router.post(
+    "/api/operator/chat",
+    response_model=OperatorChatResponse,
+    responses={
+        422: {"description": "Invalid prompt or tool argument validation failure"},
+        503: {"description": "Gemini unavailable / misconfigured"},
+    },
+)
+def operator_chat(request: OperatorChatRequest) -> OperatorChatResponse:
+    """NL operator assistant → Gemini tool call → same preview engine as manual UI."""
+    state = get_session_state()
+    try:
+        assistant = GeminiSchedulingAssistant()
+        result = assistant.run_operator_chat(
+            request.prompt,
+            context={
+                "session_id": state.session_id,
+                "revision": state.revision,
+                "current_time": state.current_time.isoformat(),
+                "site_ids": [s.site_id for s in state.sites],
+            },
+        )
+    except GeminiSchedulingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    preview = None
+    if result.get("preview"):
+        preview = ReallocationPreviewResponse.model_validate(result["preview"])
+
+    return OperatorChatResponse(
+        assistant_message=result.get("assistant_message") or "",
+        tool_calls=list(result.get("tool_calls") or []),
+        preview=preview,
+    )
