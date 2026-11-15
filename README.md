@@ -206,58 +206,58 @@ flowchart LR
 
 `app/services/placement_engine.py` (~2,100 lines) is the core of the system.
 
-**1. Build candidates.** For every job \(j\) and every eligible site \(s\), it builds each hourly start time \(t\) such that
+**1. Build candidates.** For every job $`j`$ and every eligible site $`s`$, it builds each hourly start time $`t`$ such that
 
-$$
-t \ge \text{earliest\_start}_j \quad\text{and}\quad t + \text{duration}_j \le \text{deadline}_j
-$$
+```math
+t \ge \text{earliest start}_j \quad\text{and}\quad t + \text{duration}_j \le \text{deadline}_j
+```
 
 The site also needs telemetry for every hour the job would run. Each candidate carries its projected electricity cost and incremental water use.
 
 **2. Slice time atomically.** Already-running jobs become fixed *reservations*. Each site's timeline is cut into atomic slices wherever any candidate or reservation starts or stops, so the constraints are exact rather than approximated to the hour.
 
-**3. Solve a binary MILP.** \(x_{j,s,t} \in \{0,1\}\) means "job \(j\) starts at site \(s\) at time \(t\)", and \(u_j \in \{0,1\}\) means "job \(j\) is left unfulfilled".
+**3. Solve a binary MILP.** $`x_{j,s,t} \in \{0,1\}`$ means "job $`j`$ starts at site $`s`$ at time $`t`$", and $`u_j \in \{0,1\}`$ means "job $`j`$ is left unfulfilled".
 
-$$
+```math
 \begin{aligned}
 \textbf{assignment:}\quad & \sum_{s,t} x_{j,s,t} + u_j = 1 && \forall j \\[4pt]
 \textbf{GPUs:}\quad & \sum_{(j,t)\,\text{active in }\tau} g_j\, x_{j,s,t} \;\le\; G_s(\tau) - R^{\text{gpu}}_s(\tau) && \forall s,\ \forall \text{slice } \tau \\[4pt]
 \textbf{water:}\quad & W^{\text{fixed}}_s(\tau) + \sum_{(j,t)\,\text{active in }\tau} g_j\, w^{\text{inc}}_s(\tau)\, x_{j,s,t} + R^{\text{water}}_s(\tau) \;\le\; \text{cap}_s(\tau) && \forall s,\ \forall \tau \\[4pt]
 \textbf{budget (optional):}\quad & \sum c_{j,s,t}\, x_{j,s,t} + \sum p_j\, u_j \;\le\; C_{\text{ref}} + \Delta_{\max} - C_{\text{running}}
 \end{aligned}
-$$
+```
 
 where:
 
-- \(g_j\) is the job's GPU count.
-- \(G_s\) is the site's GPU capacity, and \(R_s\) is the load already reserved by running jobs.
-- \(w^{\text{inc}}_s\) is liters per GPU-hour at that hour.
-- \(\text{cap}_s(\tau)\) is the site's hourly cap, or the emergency override if one is active.
-- \(p_j\) is the miss penalty.
+- $`g_j`$ is the job's GPU count.
+- $`G_s`$ is the site's GPU capacity, and $`R_s`$ is the load already reserved by running jobs.
+- $`w^{\text{inc}}_s`$ is liters per GPU-hour at that hour.
+- $`\text{cap}_s(\tau)`$ is the site's hourly cap, or the emergency override if one is active.
+- $`p_j`$ is the miss penalty.
 
 The objective depends on the mode:
 
 | Objective | Minimizes |
 |---|---|
-| `min_cost` | electricity \(c_{j,s,t}\) + miss penalties \(p_j\) (+ a small tie-break toward keeping current placements) |
-| `min_water` | incremental liters, plus a small electricity tie-break; leaving a job unfulfilled costs \(10^6\) |
+| `min_cost` | electricity $`c_{j,s,t}`$ + miss penalties $`p_j`$ (+ a small tie-break toward keeping current placements) |
+| `min_water` | incremental liters, plus a small electricity tie-break; leaving a job unfulfilled costs $`10^6`$ |
 | `balanced` | greedy score (below), under the same hard caps |
 
 The solver is SciPy `milp` (HiGHS) with a **10-second time limit**. Results are one of `feasible`, `infeasible`, `solver_error` or `solver_timeout`.
 
 **4. Balanced scoring.** For fleet equilibrium, each placement is scored as
 
-$$
+```math
 \text{score} = \underbrace{10\,(n_{\text{site}} + 1)^2}_{W_1:\ \text{utilization}} \;+\; \underbrace{1 \cdot \text{cost}_{\$}}_{W_2:\ \text{electricity}} \;+\; \underbrace{0.1 \cdot \text{hours delayed}}_{W_3:\ \text{latency}}
-$$
+```
 
 The quadratic term means the fifth job on a site costs much more than the first, which naturally spreads load across the fleet. All hard GPU and water caps still apply.
 
 **5. Cost model.**
 
-$$
+```math
 \text{electricity}_{\$} = \text{GPUs} \times \text{hours} \times \text{kWh per GPU-hour} \times \$/\text{kWh}_{\text{site,hour}}
-$$
+```
 
 Plus the miss penalty for anything unfulfilled. There is no water tariff (`water_usd = 0`), because water is treated as a constraint rather than a price.
 
@@ -338,7 +338,7 @@ stateDiagram-v2
     Completed --> [*]
 ```
 
-- `POST /api/demo/advance {hours}` processes every event in the half-open interval \((t_\text{from}, t_\text{to}]\) in order. Jobs start, jobs finish, each completion writes a **CSV result snapshot**, and a **notification** is sent.
+- `POST /api/demo/advance {hours}` processes every event in the half-open interval $`(t_\text{from}, t_\text{to}]`$ in order. Jobs start, jobs finish, each completion writes a **CSV result snapshot**, and a **notification** is sent.
 - **Notifications are idempotent.** Each one is keyed `{session}:{job}:e{epoch}`, and Reset bumps the epoch, so replays never duplicate them.
 - **Telemetry follows the clock.** `site_time_align` slides site profiles forward when the clock moves past the telemetry horizon, so you can keep advancing without running out of data.
 - **The UI keeps dates sensible.** The portal's date picker won't let you choose an earliest start before the current simulated time.
