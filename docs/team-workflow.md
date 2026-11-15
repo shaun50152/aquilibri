@@ -45,6 +45,7 @@ Each developer runs their own `uvicorn` process. **In-memory state is per proces
 - [ ] `GET /api/health` shows `fixtures` mode
 - [ ] Job submit + list works end-to-end
 - [ ] Operator reset restores three seeded jobs and bumps revision
-- [ ] `POST /api/reallocation/preview` returns `501` (no fake optimizer output)
+- [ ] `POST /api/reallocation/preview` returns a real typed preview (`feasible` / `infeasible`)
+- [ ] `SITE_PROFILES_FIXTURE=sites_extended_synthetic.json` for runnable long-horizon demos
 - [ ] Sample preview JSON files validate against schemas
 - [ ] `pytest` passes locally

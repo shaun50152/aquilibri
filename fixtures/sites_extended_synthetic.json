@@ -1,0 +1,449 @@
+{
+  "_comment": "EXPLICIT SYNTHETIC EXTENSION for placement-engine and preview demos. Not used by the short shared sites.json. Covers demo anchor through 2026-03-16T18:00Z so 6h and 12h jobs (including beta data-ready at 02:00) have contiguous telemetry without silently repeating the short fixture.",
+  "sites": [
+    {
+      "site_id": "site-alpha",
+      "name": "Alpha Mesa DC (synthetic extended)",
+      "hourly_profiles": [
+        {
+          "hour_start": "2026-03-15T18:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 120.0,
+          "incremental_water_liters_per_gpu_hour": 0.8,
+          "energy_kwh_per_gpu_hour": 0.45,
+          "electricity_usd_per_kwh": 0.09,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-15T19:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 118.0,
+          "incremental_water_liters_per_gpu_hour": 0.8,
+          "energy_kwh_per_gpu_hour": 0.45,
+          "electricity_usd_per_kwh": 0.09,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-15T20:00:00+00:00",
+          "gpu_capacity": 28,
+          "fixed_water_liters_per_hour": 115.0,
+          "incremental_water_liters_per_gpu_hour": 0.85,
+          "energy_kwh_per_gpu_hour": 0.46,
+          "electricity_usd_per_kwh": 0.1,
+          "water_cap_liters_per_hour": 480.0
+        },
+        {
+          "hour_start": "2026-03-15T21:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 110.0,
+          "incremental_water_liters_per_gpu_hour": 0.8,
+          "energy_kwh_per_gpu_hour": 0.45,
+          "electricity_usd_per_kwh": 0.09,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-15T22:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 110.0,
+          "incremental_water_liters_per_gpu_hour": 0.8,
+          "energy_kwh_per_gpu_hour": 0.45,
+          "electricity_usd_per_kwh": 0.09,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-15T23:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 110.0,
+          "incremental_water_liters_per_gpu_hour": 0.8,
+          "energy_kwh_per_gpu_hour": 0.45,
+          "electricity_usd_per_kwh": 0.09,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T00:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 105.0,
+          "incremental_water_liters_per_gpu_hour": 0.75,
+          "energy_kwh_per_gpu_hour": 0.44,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T01:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 105.0,
+          "incremental_water_liters_per_gpu_hour": 0.75,
+          "energy_kwh_per_gpu_hour": 0.44,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T02:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 105.0,
+          "incremental_water_liters_per_gpu_hour": 0.75,
+          "energy_kwh_per_gpu_hour": 0.44,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T03:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 105.0,
+          "incremental_water_liters_per_gpu_hour": 0.75,
+          "energy_kwh_per_gpu_hour": 0.44,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T04:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 105.0,
+          "incremental_water_liters_per_gpu_hour": 0.75,
+          "energy_kwh_per_gpu_hour": 0.44,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T05:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 105.0,
+          "incremental_water_liters_per_gpu_hour": 0.75,
+          "energy_kwh_per_gpu_hour": 0.44,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T06:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T07:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T08:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T09:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T10:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T11:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T12:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T13:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T14:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T15:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T16:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-16T17:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 100.0,
+          "incremental_water_liters_per_gpu_hour": 0.7,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 500.0
+        }
+      ]
+    },
+    {
+      "site_id": "site-beta",
+      "name": "Beta River DC (synthetic extended)",
+      "hourly_profiles": [
+        {
+          "hour_start": "2026-03-15T18:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 95.0,
+          "incremental_water_liters_per_gpu_hour": 0.55,
+          "energy_kwh_per_gpu_hour": 0.42,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": null
+        },
+        {
+          "hour_start": "2026-03-15T19:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 94.0,
+          "incremental_water_liters_per_gpu_hour": 0.55,
+          "energy_kwh_per_gpu_hour": 0.42,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": null
+        },
+        {
+          "hour_start": "2026-03-15T20:00:00+00:00",
+          "gpu_capacity": 20,
+          "fixed_water_liters_per_hour": 90.0,
+          "incremental_water_liters_per_gpu_hour": 0.6,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.085,
+          "water_cap_liters_per_hour": 360.0
+        },
+        {
+          "hour_start": "2026-03-15T21:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 90.0,
+          "incremental_water_liters_per_gpu_hour": 0.55,
+          "energy_kwh_per_gpu_hour": 0.42,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-15T22:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 90.0,
+          "incremental_water_liters_per_gpu_hour": 0.55,
+          "energy_kwh_per_gpu_hour": 0.42,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-15T23:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 90.0,
+          "incremental_water_liters_per_gpu_hour": 0.55,
+          "energy_kwh_per_gpu_hour": 0.42,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T00:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 88.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T01:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 88.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T02:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 88.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T03:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 88.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T04:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 88.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T05:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 88.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T06:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T07:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T08:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T09:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T10:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T11:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T12:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T13:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T14:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T15:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T16:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        },
+        {
+          "hour_start": "2026-03-16T17:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 85.0,
+          "incremental_water_liters_per_gpu_hour": 0.5,
+          "energy_kwh_per_gpu_hour": 0.4,
+          "electricity_usd_per_kwh": 0.07,
+          "water_cap_liters_per_hour": 400.0
+        }
+      ]
+    }
+  ]
+}

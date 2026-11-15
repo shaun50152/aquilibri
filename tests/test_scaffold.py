@@ -160,21 +160,46 @@ def test_emergency_restriction_validation():
 @pytest.mark.parametrize(
     "path",
     [
-        "/api/reallocation/preview",
         "/api/reallocation/apply",
         "/api/demo/advance",
     ],
 )
 def test_unimplemented_routes_return_501(client, path):
-    if path.endswith("preview"):
-        body = {"mode": "routine"}
-        response = client.post(path, json=body)
-    elif path.endswith("apply"):
+    if path.endswith("apply"):
         response = client.post(path, json={"preview_id": "x", "input_revision": 1})
     else:
         response = client.post(path)
     assert response.status_code == 501
     assert "detail" in response.json()
+
+
+def test_reallocation_preview_no_longer_returns_501(client):
+    """Preview is implemented; may be feasible or infeasible depending on site fixture."""
+    response = client.post("/api/reallocation/preview", json={"mode": "routine"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] in {"feasible", "infeasible"}
+    assert body["simulated"] is True
+    assert "preview_id" in body
+    assert "input_revision" in body
+
+
+def test_sample_reallocation_endpoint_for_operator_ui(client):
+    response = client.get("/api/reallocation/samples/preview_move")
+    assert response.status_code == 200
+    body = response.json()
+    assert "proposed_job_changes" in body
+    assert "metrics_before" in body
+    assert "metrics_after" in body
+    assert "cost_breakdown" in body
+
+
+def test_operator_page_has_reallocation_preview_panel(client):
+    response = client.get("/operator")
+    assert response.status_code == 200
+    assert "preview-panel" in response.text
+    assert "Preview schedule" in response.text
+    assert "Plan preview" in response.text
 
 
 def test_openapi_docs_available(client):
