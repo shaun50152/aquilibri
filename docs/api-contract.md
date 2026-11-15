@@ -119,7 +119,7 @@ Emergency:
 }
 ```
 
-`metrics_before` is the **computed reference schedule** (`metrics_before_label=computed_reference_schedule`), not the operator’s currently saved placements. `proposed_job_changes[].old_placement` still reflects saved jobs. Infeasible previews set `metrics_after` to `null` rather than inventing zeros.
+In routine mode, `metrics_before` is the **computed reference schedule** (`metrics_before_label=computed_reference_schedule`), not the operator’s currently saved placements. In emergency mode, `metrics_before` is the **saved schedule left as-is under the temporary restriction** (`metrics_before_label=saved_schedule_under_restriction`); jobs with no saved placement use the proposed placement on both sides, so the delta reflects only the emergency moves. `proposed_job_changes[].old_placement` still reflects saved jobs. Infeasible previews set `metrics_after` to `null` rather than inventing zeros.
 
 ### Cost assumptions
 

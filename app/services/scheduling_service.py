@@ -38,8 +38,11 @@ from app.services.placement_engine import (
     PlacementCandidate,
     ScheduleEvaluation,
     WaterCapOverride,
+    build_contributions,
     default_evaluation_horizon,
     evaluate_schedule,
+    finish_at,
+    index_site_profiles,
     generate_placement_candidates,
     optimize_placements,
     require_aware_utc,
@@ -209,6 +212,38 @@ def _prefer_from_saved(jobs: list[Job]) -> dict[str, tuple[str, datetime]]:
                 require_aware_utc(job.scheduled_start, "scheduled_start"),
             )
     return prefs
+
+
+def _saved_selection(
+    jobs: list[Job],
+    sites: list[SiteProfile],
+    prefs: dict[str, tuple[str, datetime]],
+) -> dict[str, PlacementCandidate]:
+    """Saved placements as candidates, without cap filtering, so they can be scored as-is."""
+    site_index = index_site_profiles(sites)
+    jobs_by_id = {j.id: j for j in jobs}
+    out: dict[str, PlacementCandidate] = {}
+    for job_id, (site_id, start) in prefs.items():
+        job = jobs_by_id.get(job_id)
+        index = site_index.get(site_id)
+        if job is None or index is None:
+            continue
+        finish = finish_at(start, job.duration_hours)
+        contribs, _missing = build_contributions(site_id, job.gpu_count, index, start, finish)
+        if contribs is None:
+            continue
+        out[job_id] = PlacementCandidate(
+            job_id=job_id,
+            site_id=site_id,
+            start=start,
+            finish=finish,
+            gpu_count=job.gpu_count,
+            contributions=contribs,
+            estimated_incremental_water_liters=sum(c.incremental_water_liters for c in contribs),
+            estimated_energy_kwh=sum(c.energy_kwh for c in contribs),
+            estimated_electricity_cost_usd=sum(c.electricity_cost_usd for c in contribs),
+        )
+    return out
 
 
 def _proposed_assignments(
@@ -857,15 +892,32 @@ def _emergency_preview(
             explanation="Internal error: critical jobs must never be dropped.",
         )
 
-    horizon_start, horizon_end = default_evaluation_horizon(
+    saved = _saved_selection(snapshot.jobs, snapshot.sites, prefs)
+    # Jobs with no saved placement get the proposed one on both sides, so the delta reflects
+    # only the emergency moves rather than a queued job's miss penalty.
+    for jid, cand in prop.selected.items():
+        saved.setdefault(jid, cand)
+    saved_h0, saved_h1 = default_evaluation_horizon(
+        snapshot.sites, snapshot.current_time, saved, gen.running_reservations
+    )
+    prop_h0, prop_h1 = default_evaluation_horizon(
+        snapshot.sites, snapshot.current_time, prop.selected, gen.running_reservations
+    )
+    # One shared horizon so fixed facility water is counted over the same hours on both sides.
+    horizon_start, horizon_end = min(saved_h0, prop_h0), max(saved_h1, prop_h1)
+
+    # metrics_before: the saved schedule left as-is under the temporary restriction.
+    ref_ev = evaluate_schedule(
+        snapshot.jobs,
         snapshot.sites,
         snapshot.current_time,
-        prop.selected,
-        gen.running_reservations,
+        selected=saved,
+        running_reservations=gen.running_reservations,
+        horizon_start=horizon_start,
+        horizon_end=horizon_end,
+        water_cap_overrides=overrides or None,
     )
-    # For emergency, metrics_before is the same balanced schedule under the
-    # temporary water-cap restriction (single scoring pass).
-    ref_ev = evaluate_schedule(
+    prop_ev = evaluate_schedule(
         snapshot.jobs,
         snapshot.sites,
         snapshot.current_time,
@@ -877,7 +929,6 @@ def _emergency_preview(
         horizon_end=horizon_end,
         water_cap_overrides=overrides or None,
     )
-    prop_ev = ref_ev
 
     # Critical deadline check.
     for o in prop_ev.deadline_outcomes:
@@ -924,7 +975,7 @@ def _emergency_preview(
         explanation=explanation,
         infeasibility_reason=None,
         simulated=True,
-        metrics_before_label=MetricsSourceLabel.computed_reference_schedule,
+        metrics_before_label=MetricsSourceLabel.saved_schedule_under_restriction,
         reference_cost_usd=ref_ev.total_cost_usd,
         cost_ceiling_usd=None,
         max_additional_cost_usd=None,
