@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AquaLibri — Operator</title>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="wrap" style="padding:0">
+      <h1>Operator dashboard</h1>
+      <p><a href="/portal">← User portal</a></p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="banner">
+      <div>
+        <strong>Demo clock:</strong> <span id="demo-clock">—</span>
+        <span class="badge">Simulated fixture data</span>
+      </div>
+      <div class="toolbar" style="margin:0">
+        <button type="button" class="secondary" id="refresh-btn">Refresh</button>
+        <button type="button" id="reset-btn">Reset demo</button>
+      </div>
+    </div>
+    <div id="op-error" class="error" hidden></div>
+
+    <section class="card">
+      <h2>Sites</h2>
+      <div class="grid-2" id="sites-grid"></div>
+    </section>
+
+    <section class="card">
+      <h2>Job queue</h2>
+      <table id="jobs-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Status</th>
+            <th>GPUs</th>
+            <th>Site</th>
+            <th>Start</th>
+            <th>Deadline</th>
+          </tr>
+        </thead>
+        <tbody id="jobs-body"></tbody>
+      </table>
+    </section>
+
+    <section class="card coming-soon">
+      <h2>Reallocation (coming next)</h2>
+      <p>Routine and emergency scheduling preview/apply will call <code>/api/reallocation/*</code> once the MILP + Gemini integration lands.</p>
+      <p class="muted">Sample preview JSON lives in <code>fixtures/preview_*.json</code> for UI prototyping.</p>
+    </section>
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/operator.js"></script>
+</body>
+</html>

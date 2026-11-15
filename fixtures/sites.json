@@ -1,0 +1,70 @@
+{
+  "sites": [
+    {
+      "site_id": "site-alpha",
+      "name": "Alpha Mesa DC",
+      "hourly_profiles": [
+        {
+          "hour_start": "2026-03-15T18:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 120.0,
+          "incremental_water_liters_per_gpu_hour": 0.8,
+          "energy_kwh_per_gpu_hour": 0.45,
+          "electricity_usd_per_kwh": 0.09,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-15T19:00:00+00:00",
+          "gpu_capacity": 32,
+          "fixed_water_liters_per_hour": 118.0,
+          "incremental_water_liters_per_gpu_hour": 0.8,
+          "energy_kwh_per_gpu_hour": 0.45,
+          "electricity_usd_per_kwh": 0.09,
+          "water_cap_liters_per_hour": 500.0
+        },
+        {
+          "hour_start": "2026-03-15T20:00:00+00:00",
+          "gpu_capacity": 28,
+          "fixed_water_liters_per_hour": 115.0,
+          "incremental_water_liters_per_gpu_hour": 0.85,
+          "energy_kwh_per_gpu_hour": 0.46,
+          "electricity_usd_per_kwh": 0.1,
+          "water_cap_liters_per_hour": 480.0
+        }
+      ]
+    },
+    {
+      "site_id": "site-beta",
+      "name": "Beta River DC",
+      "hourly_profiles": [
+        {
+          "hour_start": "2026-03-15T18:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 95.0,
+          "incremental_water_liters_per_gpu_hour": 0.55,
+          "energy_kwh_per_gpu_hour": 0.42,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": null
+        },
+        {
+          "hour_start": "2026-03-15T19:00:00+00:00",
+          "gpu_capacity": 24,
+          "fixed_water_liters_per_hour": 94.0,
+          "incremental_water_liters_per_gpu_hour": 0.55,
+          "energy_kwh_per_gpu_hour": 0.42,
+          "electricity_usd_per_kwh": 0.08,
+          "water_cap_liters_per_hour": null
+        },
+        {
+          "hour_start": "2026-03-15T20:00:00+00:00",
+          "gpu_capacity": 20,
+          "fixed_water_liters_per_hour": 90.0,
+          "incremental_water_liters_per_gpu_hour": 0.6,
+          "energy_kwh_per_gpu_hour": 0.43,
+          "electricity_usd_per_kwh": 0.085,
+          "water_cap_liters_per_hour": 360.0
+        }
+      ]
+    }
+  ]
+}

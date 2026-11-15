@@ -1,0 +1,44 @@
+{
+  "_sample": true,
+  "_description": "Sample feasible plan with one unfulfilled job — for frontend development only.",
+  "preview_id": "preview-sample-unfulfilled-001",
+  "input_revision": 2,
+  "status": "feasible",
+  "proposed_job_changes": [],
+  "metrics_before": {
+    "total_water_liters": 2100.0,
+    "total_energy_kwh": 60.0,
+    "total_cost_usd": 980.0,
+    "jobs_on_time": 1,
+    "jobs_late": 1,
+    "jobs_unfulfilled": 0
+  },
+  "metrics_after": {
+    "total_water_liters": 2050.0,
+    "total_energy_kwh": 58.5,
+    "total_cost_usd": 1020.0,
+    "jobs_on_time": 1,
+    "jobs_late": 0,
+    "jobs_unfulfilled": 1
+  },
+  "per_site_water": [
+    { "site_id": "site-alpha", "water_liters": 1100.0, "water_cap_violations": 0 },
+    { "site_id": "site-beta", "water_liters": 950.0, "water_cap_violations": 0 }
+  ],
+  "cost_breakdown": {
+    "energy_usd": 220.0,
+    "water_usd": 30.0,
+    "miss_penalties_usd": 1000.0,
+    "total_usd": 1020.0
+  },
+  "deadline_outcomes": [
+    {
+      "job_id": "job-hackuta-0003",
+      "met_deadline": false,
+      "projected_completion": null
+    }
+  ],
+  "explanation": "Capacity tight; best effort leaves training_large unfulfilled rather than violating water caps.",
+  "infeasibility_reason": null,
+  "simulated": true
+}

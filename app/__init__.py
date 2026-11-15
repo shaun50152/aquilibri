@@ -1,0 +1,1 @@
+"""AquaLibri application package."""

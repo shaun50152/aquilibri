@@ -1,2 +1,90 @@
 # aquilibri
- **Aqualibri** is an AI-powered, water-aware workload orchestration platform that dynamically optimizes AI data center scheduling and redistributes workloads to reduce water consumption, manage resource constraints, and minimize operational costs.
+
+**Aqualibri** is an AI-powered, water-aware workload orchestration platform that dynamically optimizes AI data center scheduling and redistributes workloads to reduce water consumption, manage resource constraints, and minimize operational costs.
+
+This repository is the **HackUTA scaffold**: a runnable local demo using fixture-backed jobs and site profiles. Cloud integrations (MongoDB Atlas, Tiger Data, Gemini, SciPy MILP) are stubbed with clear boundaries.
+
+## What works now
+
+- User portal at `/portal` — submit jobs (three templates), list queue, demo clock
+- Operator dashboard at `/operator` — sites, shared job queue, reset demo
+- REST API with OpenAPI at `/docs`
+- In-memory session state with `POST /api/demo/reset`
+- Sample reallocation preview JSON under `fixtures/preview_*.json` for UI prototyping
+
+## Not implemented yet
+
+- `POST /api/reallocation/preview`, `/api/reallocation/apply` (returns **501**)
+- `POST /api/demo/advance` (returns **501**)
+- MongoDB, Tiger Data, Gemini, MILP scheduler, simulated job worker ticks
+
+See `docs/team-workflow.md` for ownership split.
+
+## Prerequisites
+
+- Python 3.11+ recommended
+- No database or API keys required for `DATA_MODE=fixtures`
+
+## Setup
+
+### Windows (PowerShell)
+
+```powershell
+cd c:\Projects\aquilibri
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+```
+
+### macOS / Linux
+
+```bash
+cd /path/to/aquilibri
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+## Run
+
+```bash
+python -m uvicorn app.main:app --reload
+```
+
+| URL | Purpose |
+|-----|---------|
+| http://127.0.0.1:8000/portal | User job portal |
+| http://127.0.0.1:8000/operator | Operator dashboard |
+| http://127.0.0.1:8000/docs | OpenAPI docs |
+
+Root `/` redirects to `/portal`.
+
+## Fixture state & demo clock
+
+- Demo anchor: **2026-03-15T18:00:00 UTC** (form defaults and fixtures align to this instant).
+- Jobs and sites load from `fixtures/` at startup.
+- **Reset** (`POST /api/demo/reset` or the operator button) restores the three seeded jobs and increments `revision` (previews tied to an old revision should be treated as stale).
+- Restarting the server reloads fixtures from disk; unsaved in-memory changes are lost.
+
+## Verify
+
+```bash
+pytest
+python scripts/seed_demo.py
+```
+
+## Configuration
+
+Copy `.env.example` to `.env`. Key variables:
+
+- `DATA_MODE=fixtures` (only supported mode in this scaffold)
+- `DEMO_SESSION_ID` — local session label
+- Placeholders: `MONGODB_*`, `TIGERDATA_DATABASE_URL`, `GEMINI_*` (unused until integrations land)
+
+## Documentation
+
+- `docs/architecture.md` — layers and integration map
+- `docs/api-contract.md` — endpoints, units, errors
+- `docs/team-workflow.md` — branches and ownership

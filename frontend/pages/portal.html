@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AquaLibri — User Portal</title>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="wrap" style="padding:0">
+      <h1>AquaLibri</h1>
+      <p>Water-aware batch job submission · <a href="/operator">Operator dashboard</a></p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="banner">
+      <div>
+        <strong>Demo clock:</strong> <span id="demo-clock">—</span>
+        <span class="badge">Simulated fixture data</span>
+      </div>
+      <div class="muted">Session <span id="demo-session">—</span> · revision <span id="demo-revision">—</span></div>
+    </div>
+
+    <section class="card">
+      <h2>Submit a job</h2>
+      <p class="muted">Templates resolve GPU count and duration on the server. Times are stored as UTC.</p>
+      <form id="job-form" novalidate>
+        <label for="template">Template</label>
+        <select id="template" name="template" required>
+          <option value="inference_batch">Inference batch (4 GPU · 2 h)</option>
+          <option value="training_small">Training small (8 GPU · 6 h)</option>
+          <option value="training_large">Training large (16 GPU · 12 h)</option>
+        </select>
+
+        <label for="earliest_start">Earliest start (UTC)</label>
+        <input id="earliest_start" name="earliest_start" type="datetime-local" required />
+
+        <label for="deadline">Deadline (UTC)</label>
+        <input id="deadline" name="deadline" type="datetime-local" required />
+
+        <button type="submit" id="submit-btn">Submit job</button>
+      </form>
+      <div id="form-error" class="error" hidden></div>
+    </section>
+
+    <section class="card">
+      <div class="toolbar">
+        <h2 style="margin:0; flex:1">Your jobs</h2>
+        <button type="button" class="secondary" id="refresh-btn">Refresh</button>
+      </div>
+      <div id="jobs-empty" class="empty">No jobs yet — submit one above.</div>
+      <table id="jobs-table" hidden>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Template</th>
+            <th>Status</th>
+            <th>Site</th>
+            <th>Scheduled start</th>
+            <th>Deadline</th>
+          </tr>
+        </thead>
+        <tbody id="jobs-body"></tbody>
+      </table>
+      <div id="list-error" class="error" hidden></div>
+    </section>
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/portal.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+{
+  "_sample": true,
+  "_description": "Sample infeasible emergency scenario — for frontend development only.",
+  "preview_id": "preview-sample-infeasible-001",
+  "input_revision": 3,
+  "status": "infeasible",
+  "proposed_job_changes": [],
+  "metrics_before": {
+    "total_water_liters": 1900.0,
+    "total_energy_kwh": 55.0,
+    "total_cost_usd": 340.0,
+    "jobs_on_time": 2,
+    "jobs_late": 0,
+    "jobs_unfulfilled": 0
+  },
+  "metrics_after": {
+    "total_water_liters": 1900.0,
+    "total_energy_kwh": 55.0,
+    "total_cost_usd": 340.0,
+    "jobs_on_time": 2,
+    "jobs_late": 0,
+    "jobs_unfulfilled": 0
+  },
+  "per_site_water": [
+    { "site_id": "site-alpha", "water_liters": 950.0, "water_cap_violations": 2 },
+    { "site_id": "site-beta", "water_liters": 950.0, "water_cap_violations": 0 }
+  ],
+  "cost_breakdown": {
+    "energy_usd": 300.0,
+    "water_usd": 40.0,
+    "miss_penalties_usd": 0.0,
+    "total_usd": 340.0
+  },
+  "deadline_outcomes": [],
+  "explanation": "Emergency water cap on site-alpha cannot be satisfied while honoring running job on beta.",
+  "infeasibility_reason": "No feasible placement: site-alpha water cap 200 L/h between 2026-03-15T20:00:00+00:00 and 2026-03-16T04:00:00+00:00.",
+  "simulated": true
+}
