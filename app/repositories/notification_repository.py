@@ -10,7 +10,7 @@ from app.state import get_session_state
 
 
 def _persist_notification(record: CompletionNotification) -> None:
-    if get_settings().data_mode == "mongodb":
+    if get_settings().is_live:
         store = get_mongo_job_store()
         store.upsert_notification(record.model_dump(mode="json"))
 
@@ -62,6 +62,6 @@ def ensure_completion_notification(job: Job) -> CompletionNotification | None:
 def clear_session_notifications(session_id: str) -> None:
     state = get_session_state()
     state.notifications = [n for n in state.notifications if n.session_id != session_id]
-    if get_settings().data_mode == "mongodb":
+    if get_settings().is_live:
         get_mongo_job_store().delete_notifications(session_id)
 

@@ -69,7 +69,8 @@ def test_health_no_secrets(client):
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert body["data_mode"] == "fixtures"
+    assert body["data_mode"] == "synthetic"
+    assert body["sites_source"] == "fixtures"
     assert "gemini" not in json.dumps(body).lower()
     assert "mongodb_uri" not in json.dumps(body).lower()
 
@@ -154,7 +155,7 @@ def test_reset_restores_jobs_and_increments_revision(client):
 def test_emergency_restriction_validation():
     with pytest.raises(ValidationError):
         EmergencyRestriction(
-            site_id="site-alpha",
+            site_id="us-west-1",
             water_cap_liters_per_hour=100,
             start="2026-03-15T20:00:00+00:00",
             end="2026-03-15T18:00:00+00:00",

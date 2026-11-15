@@ -1,10 +1,9 @@
 import os
 
-# Tests always run offline; local .env may set mongodb for manual runs.
-os.environ["DATA_MODE"] = "fixtures"
+# Tests always run offline; local .env may set live/mongodb for manual runs.
+os.environ["DATA_MODE"] = "synthetic"
 os.environ["MONGODB_URI"] = ""
 os.environ.setdefault("SITE_PROFILES_FIXTURE", "sites_extended_synthetic.json")
-os.environ.setdefault("USE_TIGER_SITE_PROFILES", "false")
 
 from app.config import clear_settings_cache  # noqa: E402
 

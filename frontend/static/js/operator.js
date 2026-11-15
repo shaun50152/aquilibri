@@ -891,7 +891,7 @@ $("reset-btn").addEventListener("click", async () => {
     selSite = null;
     setDirectorPressed(null, "d-routine");
     updatePreviewButton();
-    toast(DEMO ? "Sample data reset." : "Demo reset. Fixtures restored.");
+    toast(DEMO ? "Sample data reset." : "Demo reset.");
     await loadAll();
   } catch (err) {
     toast(`Could not reset. ${err.message}`);

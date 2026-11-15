@@ -11,5 +11,6 @@ def health_check():
     return {
         "status": "ok",
         "data_mode": settings.data_mode,
+        "sites_source": "tiger" if settings.should_use_tiger_site_profiles() else "fixtures",
         "demo_session_id": settings.demo_session_id,
     }

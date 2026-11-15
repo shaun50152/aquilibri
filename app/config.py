@@ -1,6 +1,7 @@
 from pathlib import Path
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Repo root: parent of app/
@@ -12,7 +13,16 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 # Documented demo anchor — fixtures use timestamps relative to this instant.
 DEMO_CLOCK_ANCHOR_ISO = "2026-03-15T18:00:00+00:00"
 
-SUPPORTED_DATA_MODES = frozenset({"fixtures", "mongodb"})
+# Canonical modes. Legacy aliases: fixtures→synthetic, mongodb→live.
+DATA_MODE_SYNTHETIC = "synthetic"
+DATA_MODE_LIVE = "live"
+SUPPORTED_DATA_MODES = frozenset({DATA_MODE_SYNTHETIC, DATA_MODE_LIVE})
+DATA_MODE_ALIASES = {
+    "synthetic": DATA_MODE_SYNTHETIC,
+    "live": DATA_MODE_LIVE,
+    "fixtures": DATA_MODE_SYNTHETIC,
+    "mongodb": DATA_MODE_LIVE,
+}
 
 # Synthetic site telemetry fixtures under fixtures/.
 # - sites.json: short 3-hour horizon (missing-coverage tests)
@@ -31,7 +41,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    data_mode: str = "fixtures"
+    data_mode: str = DATA_MODE_SYNTHETIC
     demo_session_id: str = "demo-session-hackuta-2026"
     # Filename under fixtures/ — both files are explicitly synthetic demo data.
     site_profiles_fixture: str = SITE_PROFILES_SHORT
@@ -45,21 +55,41 @@ class Settings(BaseSettings):
     pgpassword: str = ""
     pgport: str = "5432"
     pgsslmode: str = "require"
-    # When true and Postgres is configured, GET /api/sites + solver prefer Tiger.
+    # Deprecated: Tiger vs fixtures is controlled by DATA_MODE (live→Tiger, synthetic→fixtures).
     use_tiger_site_profiles: bool = True
     gemini_api_key: str = ""
     gemini_model: str = "gemini-1.5-flash"
+
+    @field_validator("data_mode", mode="before")
+    @classmethod
+    def normalize_data_mode(cls, value: object) -> object:
+        if isinstance(value, str):
+            key = value.strip().lower()
+            return DATA_MODE_ALIASES.get(key, key)
+        return value
+
+    @property
+    def is_live(self) -> bool:
+        return self.data_mode == DATA_MODE_LIVE
+
+    @property
+    def is_synthetic(self) -> bool:
+        return self.data_mode == DATA_MODE_SYNTHETIC
+
+    def should_use_tiger_site_profiles(self) -> bool:
+        """Live mode reads Tiger Data; synthetic mode reads local site fixtures."""
+        return self.is_live
 
     def require_supported_data_mode(self) -> None:
         if self.data_mode not in SUPPORTED_DATA_MODES:
             raise RuntimeError(
                 f"Unsupported DATA_MODE={self.data_mode!r}. "
-                f"Supported modes: {sorted(SUPPORTED_DATA_MODES)}. "
-                "Cloud integrations are not enabled in this scaffold build."
+                f"Supported modes: {sorted(SUPPORTED_DATA_MODES)} "
+                f"(aliases: fixtures→synthetic, mongodb→live)."
             )
-        if self.data_mode == "mongodb" and not self.mongodb_uri.strip():
+        if self.is_live and not self.mongodb_uri.strip():
             raise RuntimeError(
-                "DATA_MODE=mongodb requires MONGODB_URI to be set (e.g. in local .env)."
+                "DATA_MODE=live requires MONGODB_URI to be set (e.g. in local .env)."
             )
 
     def require_supported_site_profiles_fixture(self) -> None:

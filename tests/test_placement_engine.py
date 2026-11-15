@@ -548,7 +548,7 @@ def test_extended_synthetic_covers_six_and_twelve_hour_jobs():
     # Running 6h reservation should succeed with extended coverage.
     assert any(r.job_id == "job-hackuta-0002" for r in result.running_reservations)
     running = next(r for r in result.running_reservations if r.job_id == "job-hackuta-0002")
-    assert running.site_id == "site-beta"
+    assert running.site_id == "us-south-central"
     assert running.finish == finish_at(NOW, 6.0)
 
     # 2h scheduled job should have candidates.

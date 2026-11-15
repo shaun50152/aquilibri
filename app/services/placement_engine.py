@@ -20,6 +20,12 @@ from app.schemas.sites import HourlySiteProfile, SiteProfile
 ONE_HOUR = timedelta(hours=1)
 _EPS = 1e-9
 
+# Multi-objective placement weights (tunable for demos).
+# Priority: water/hardware feasibility (hard) >> equilibrium >> cost >> earliness.
+PLACEMENT_WEIGHT_UTILIZATION = 10.0  # W1 — (jobs_at_site + 1)^2
+PLACEMENT_WEIGHT_COST = 1.0  # W2 — projected electricity USD
+PLACEMENT_WEIGHT_TIME = 0.1  # W3 — hours delayed from earliest_start
+
 
 # ---------------------------------------------------------------------------
 # Internal models
@@ -134,6 +140,8 @@ class WaterCapOverride:
 class OptimizeObjective(str, Enum):
     min_cost = "min_cost"
     min_water = "min_water"
+    # Greedy multi-objective: equilibrium + cost + earliness under hard caps.
+    balanced = "balanced"
 
 
 @dataclass(frozen=True)
@@ -1243,6 +1251,204 @@ def check_simultaneous_feasibility(
     )
 
 
+def score_placement_candidate(
+    candidate: PlacementCandidate,
+    *,
+    jobs_already_at_site: int,
+    earliest_start: datetime,
+    prefer: Optional[tuple[str, datetime]] = None,
+    change_weight: float = 1e-6,
+    w_utilization: float = PLACEMENT_WEIGHT_UTILIZATION,
+    w_cost: float = PLACEMENT_WEIGHT_COST,
+    w_time: float = PLACEMENT_WEIGHT_TIME,
+) -> float:
+    """Weighted score — lower is better. Caller must ensure hard-cap feasibility."""
+    utilization_penalty = float(jobs_already_at_site + 1) ** 2
+    cost_penalty = float(candidate.estimated_electricity_cost_usd)
+    earliest = require_aware_utc(earliest_start, "earliest_start")
+    start = require_aware_utc(candidate.start, "candidate.start")
+    hours_delayed = max(0.0, (start - earliest).total_seconds() / 3600.0)
+    time_penalty = hours_delayed
+    score = (
+        w_utilization * utilization_penalty
+        + w_cost * cost_penalty
+        + w_time * time_penalty
+    )
+    if prefer is not None and (candidate.site_id, candidate.start) != prefer:
+        score += change_weight
+    return score
+
+
+def optimize_placements_balanced(
+    candidates_by_job: dict[str, list[PlacementCandidate]],
+    running_reservations: list[RunningReservation],
+    sites: list[SiteProfile],
+    jobs_by_id: dict[str, Job],
+    *,
+    job_ids: Optional[list[str]] = None,
+    allow_unfulfilled: Optional[set[str]] = None,
+    cost_ceiling: Optional[float] = None,
+    water_cap_overrides: Optional[list[WaterCapOverride]] = None,
+    prefer_placements: Optional[dict[str, tuple[str, datetime]]] = None,
+    secondary_change_weight: float = 1e-6,
+    w_utilization: float = PLACEMENT_WEIGHT_UTILIZATION,
+    w_cost: float = PLACEMENT_WEIGHT_COST,
+    w_time: float = PLACEMENT_WEIGHT_TIME,
+) -> OptimizeResult:
+    """Greedy multi-objective placement under hard water/GPU caps.
+
+    For each unassigned job, score every valid (site, start) candidate:
+
+        score = W1*(jobs_at_site+1)^2 + W2*cost + W3*hours_delayed
+
+    then lock in the minimum score and update site utilization. Candidates that
+    would violate joint GPU/water caps with the partial selection are skipped
+    (hard infeasible / infinite score).
+    """
+    allow_unfulfilled = set(allow_unfulfilled or ())
+    prefer_placements = prefer_placements or {}
+
+    if job_ids is None:
+        target_jobs = sorted(candidates_by_job)
+    else:
+        target_jobs = list(job_ids)
+
+    target_set = set(target_jobs)
+    running_ids = {r.job_id for r in running_reservations}
+
+    site_job_counts: dict[str, int] = {}
+    for res in running_reservations:
+        site_job_counts[res.site_id] = site_job_counts.get(res.site_id, 0) + 1
+    # Count fixed scheduled jobs that are not being re-placed (utilization seed).
+    for jid, job in jobs_by_id.items():
+        if jid in target_set or jid in running_ids:
+            continue
+        if job.assigned_site_id and job.status == JobStatus.scheduled:
+            site_job_counts[job.assigned_site_id] = (
+                site_job_counts.get(job.assigned_site_id, 0) + 1
+            )
+
+    running_elec = sum(
+        float(r.estimated_electricity_cost_usd) for r in running_reservations
+    )
+
+    def _job_sort_key(job_id: str) -> tuple:
+        job = jobs_by_id.get(job_id)
+        critical = 0 if (job and job.critical) else 1
+        n_opts = len(candidates_by_job.get(job_id, []))
+        deadline = job.deadline if job else datetime.max.replace(tzinfo=timezone.utc)
+        return (critical, n_opts, deadline, job_id)
+
+    selected: dict[str, PlacementCandidate] = {}
+    unfulfilled: list[str] = []
+    objective_total = 0.0
+
+    for job_id in sorted(target_jobs, key=_job_sort_key):
+        opts = list(candidates_by_job.get(job_id, []))
+        job = jobs_by_id.get(job_id)
+        earliest = (
+            job.earliest_start
+            if job is not None
+            else datetime.min.replace(tzinfo=timezone.utc)
+        )
+        prefer = prefer_placements.get(job_id)
+
+        best: Optional[PlacementCandidate] = None
+        best_score = float("inf")
+
+        for cand in opts:
+            trial = dict(selected)
+            trial[job_id] = cand
+            if validate_selection(
+                trial,
+                running_reservations,
+                sites,
+                water_cap_overrides=water_cap_overrides,
+            ):
+                continue  # hard cap / GPU conflict → skip (infinite)
+
+            if cost_ceiling is not None:
+                selected_elec = sum(
+                    float(c.estimated_electricity_cost_usd) for c in trial.values()
+                )
+                # Remaining optional jobs may still pay miss penalties; ignore here.
+                if running_elec + selected_elec > float(cost_ceiling) + _EPS:
+                    continue
+
+            score = score_placement_candidate(
+                cand,
+                jobs_already_at_site=site_job_counts.get(cand.site_id, 0),
+                earliest_start=earliest,
+                prefer=prefer,
+                change_weight=secondary_change_weight,
+                w_utilization=w_utilization,
+                w_cost=w_cost,
+                w_time=w_time,
+            )
+            # Lower score wins; stable tie-break by earlier start, then site id.
+            rank = (score, cand.start, cand.site_id)
+            best_rank = (
+                (best_score, best.start, best.site_id)
+                if best is not None
+                else None
+            )
+            if best_rank is None or rank < best_rank:
+                best = cand
+                best_score = score
+
+        if best is not None:
+            selected[job_id] = best
+            site_job_counts[best.site_id] = site_job_counts.get(best.site_id, 0) + 1
+            objective_total += best_score
+            continue
+
+        if job_id in allow_unfulfilled:
+            unfulfilled.append(job_id)
+            if job is not None:
+                objective_total += float(job.miss_penalty_usd)
+            continue
+
+        if not opts:
+            return OptimizeResult(
+                status=FeasibilityStatus.infeasible,
+                reason=f"Job {job_id} has no candidates",
+                selected=selected,
+                unfulfilled_job_ids=tuple(sorted(unfulfilled)),
+            )
+        return OptimizeResult(
+            status=FeasibilityStatus.infeasible,
+            reason=(
+                f"Job {job_id} has no jointly feasible placement under water/GPU "
+                f"caps with the current partial selection"
+            ),
+            selected=selected,
+            unfulfilled_job_ids=tuple(sorted(unfulfilled)),
+        )
+
+    violations = validate_selection(
+        selected,
+        running_reservations,
+        sites,
+        water_cap_overrides=water_cap_overrides,
+    )
+    if violations:
+        return OptimizeResult(
+            status=FeasibilityStatus.solver_error,
+            reason="Balanced selection failed post-validation: " + violations[0].message,
+            selected=selected,
+            unfulfilled_job_ids=tuple(sorted(unfulfilled)),
+            validated=False,
+        )
+
+    return OptimizeResult(
+        status=FeasibilityStatus.feasible,
+        selected=selected,
+        unfulfilled_job_ids=tuple(sorted(unfulfilled)),
+        objective_value=objective_total,
+        validated=True,
+    )
+
+
 def optimize_placements(
     candidates_by_job: dict[str, list[PlacementCandidate]],
     running_reservations: list[RunningReservation],
@@ -1259,12 +1465,29 @@ def optimize_placements(
     secondary_change_weight: float = 1e-6,
     secondary_cost_weight: float = 1e-4,
 ) -> OptimizeResult:
-    """MILP assignment over candidates with cost or water objectives.
+    """Assign candidates with cost, water, or balanced multi-objective scoring.
+
+    ``balanced`` uses a greedy equilibrium/cost/earliness heuristic under hard
+    caps (and optional cost ceiling). ``min_cost`` / ``min_water`` use SciPy MILP.
 
     Jobs in ``allow_unfulfilled`` may be left unfulfilled (binary) and pay
     ``miss_penalty_usd``. All other requested jobs must receive exactly one
     candidate. Running reservations stay fixed and are never double-counted.
     """
+    if objective == OptimizeObjective.balanced:
+        return optimize_placements_balanced(
+            candidates_by_job,
+            running_reservations,
+            sites,
+            jobs_by_id,
+            job_ids=job_ids,
+            allow_unfulfilled=allow_unfulfilled,
+            cost_ceiling=cost_ceiling,
+            water_cap_overrides=water_cap_overrides,
+            prefer_placements=prefer_placements,
+            secondary_change_weight=secondary_change_weight,
+        )
+
     import numpy as np
     from scipy.optimize import Bounds, LinearConstraint, milp
 

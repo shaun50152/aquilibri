@@ -637,36 +637,24 @@ def _routine_preview(
     reference_cost = ref_ev.total_cost_usd
     ceiling = reference_cost + max_extra
 
+    # Proposed: equilibrium-first scoring under the same hard caps + cost ceiling.
     prop = optimize_placements(
         gen.candidates_by_job,
         gen.running_reservations,
         snapshot.sites,
         jobs_by_id,
-        objective=OptimizeObjective.min_water,
+        objective=OptimizeObjective.balanced,
         job_ids=reconsider,
         allow_unfulfilled=set(),
         cost_ceiling=ceiling,
         water_cap_overrides=overrides or None,
         prefer_placements=prefs,
         secondary_change_weight=1e-6,
-        secondary_cost_weight=1e-4,
     )
     if prop.status != FeasibilityStatus.feasible:
-        return _infeasible_response(
-            snapshot=snapshot,
-            preview_id=preview_id,
-            reason=prop.reason or "Water-minimizing schedule infeasible under cost ceiling",
-            solver_outcome=_solver_outcome(prop.status),
-            explanation=(
-                f"No water-minimizing schedule found within cost ceiling "
-                f"{ceiling:.4f} USD (reference {reference_cost:.4f} + allowance {max_extra:.4f}). "
-                f"{prop.reason or ''}"
-            ),
-            reference_ev=ref_ev,
-            reference_cost=reference_cost,
-            cost_ceiling=ceiling,
-            max_additional=max_extra,
-        )
+        # Tight budgets (e.g. max_additional_cost_usd=0) may not leave room to
+        # rebalance away from the min-cost reference — keep the reference plan.
+        prop = ref
 
     # Extend horizon to cover both schedules.
     horizon_start, horizon_end = default_evaluation_horizon(
@@ -727,8 +715,10 @@ def _routine_preview(
     explanation = (
         f"Routine optimization: computed min-cost reference schedule "
         f"(cost={reference_cost:.4f} USD, label=computed_reference_schedule), "
-        f"then minimized fleet water under ceiling {ceiling:.4f} USD "
+        f"then re-scored placements for equilibrium (site load), cost, and earliness "
+        f"under ceiling {ceiling:.4f} USD "
         f"(reference + max_additional_cost_usd={max_extra:.4f}; omitted allowance means 0). "
+        f"Hard water/GPU caps remain infeasible-or-skip. "
         f"Proposed water={prop_ev.total_water_liters:.3f} L vs reference "
         f"{ref_ev.total_water_liters:.3f} L. "
         f"Assignment changes vs saved queue: {len(changes)}"
@@ -823,13 +813,13 @@ def _emergency_preview(
 
     allow_unfulfilled = set(noncritical_ids)
 
-    # Reference under emergency constraints: min cost (may unfulfill noncritical).
+    # Under emergency water caps: equilibrium/cost/earliness scoring (may unfulfill noncritical).
     ref = optimize_placements(
         candidates,
         gen.running_reservations,
         snapshot.sites,
         jobs_by_id,
-        objective=OptimizeObjective.min_cost,
+        objective=OptimizeObjective.balanced,
         job_ids=reconsider,
         allow_unfulfilled=allow_unfulfilled,
         water_cap_overrides=overrides or None,
@@ -849,7 +839,7 @@ def _emergency_preview(
             ),
         )
 
-    # Proposed = same min-cost result for emergency (objective is modeled cost).
+    # Proposed = same balanced result under the emergency restriction.
     prop = ref
     unfulfilled = set(prop.unfulfilled_job_ids)
     reasons = {
@@ -873,8 +863,8 @@ def _emergency_preview(
         prop.selected,
         gen.running_reservations,
     )
-    # For emergency, metrics_before is still a computed reference under the same
-    # restriction (min-cost). There is no separate water-minimizing second pass.
+    # For emergency, metrics_before is the same balanced schedule under the
+    # temporary water-cap restriction (single scoring pass).
     ref_ev = evaluate_schedule(
         snapshot.jobs,
         snapshot.sites,
@@ -915,7 +905,8 @@ def _emergency_preview(
         f"Emergency optimization under temporary water cap {er.water_cap_liters_per_hour} L/h "
         f"on {er.site_id} from {er.start.isoformat()} to {er.end.isoformat()} "
         f"(stricter of temporary and normal caps during overlap; partial hours honored). "
-        f"Minimized modeled cost while keeping running jobs fixed and critical jobs on time. "
+        f"Scored placements for equilibrium (site load), cost, and earliness under hard caps "
+        f"while keeping running jobs fixed and critical jobs on time. "
         f"Unfulfilled noncritical jobs: {sorted(unfulfilled) or 'none'}. "
         f"Assignment changes vs saved queue: {len(changes)}."
     )
@@ -972,39 +963,92 @@ def try_place_submitted_job(
     existing_jobs: list[Job],
     sites: list[SiteProfile],
     current_time: datetime,
-) -> Job:
-    """Initial placement for a newly submitted job; leaves status queued when infeasible."""
+) -> tuple[Job, list[Job]]:
+    """Place a new job with equilibrium scoring; may rebalance other queued/scheduled jobs.
+
+    Returns ``(placed_or_queued_new_job, rebalanced_existing_jobs)``.
+    """
     if job.status != JobStatus.queued:
-        return job
+        return job, []
+
     workload = list(existing_jobs) + [job]
+    reconsider = [
+        j.id
+        for j in workload
+        if j.status in {JobStatus.queued, JobStatus.scheduled}
+    ]
     gen = generate_placement_candidates(
         workload,
         sites,
         current_time,
-        reconsider_job_ids=[job.id],
+        reconsider_job_ids=reconsider,
     )
-    if not gen.candidates_by_job.get(job.id):
-        return job
     jobs_by_id = {j.id: j for j in workload}
+    if not gen.candidates_by_job.get(job.id):
+        return job, []
+
     opt = optimize_placements(
         gen.candidates_by_job,
         gen.running_reservations,
         sites,
         jobs_by_id,
-        objective=OptimizeObjective.min_cost,
-        job_ids=[job.id],
+        objective=OptimizeObjective.balanced,
+        job_ids=reconsider,
         allow_unfulfilled=set(),
     )
-    if opt.status != FeasibilityStatus.feasible or job.id not in opt.selected:
-        return job
-    cand = opt.selected[job.id]
-    return job.model_copy(
-        update={
-            "status": JobStatus.scheduled,
-            "assigned_site_id": cand.site_id,
-            "scheduled_start": cand.start,
-        }
-    )
+    if opt.status != FeasibilityStatus.feasible:
+        # Fall back to placing only the new job if a full rebalance is infeasible.
+        solo = optimize_placements(
+            {job.id: list(gen.candidates_by_job.get(job.id, []))},
+            gen.running_reservations,
+            sites,
+            jobs_by_id,
+            objective=OptimizeObjective.balanced,
+            job_ids=[job.id],
+            allow_unfulfilled=set(),
+        )
+        if solo.status != FeasibilityStatus.feasible or job.id not in solo.selected:
+            return job, []
+        cand = solo.selected[job.id]
+        return (
+            job.model_copy(
+                update={
+                    "status": JobStatus.scheduled,
+                    "assigned_site_id": cand.site_id,
+                    "scheduled_start": cand.start,
+                }
+            ),
+            [],
+        )
+
+    rebalanced: list[Job] = []
+    placed_new = job
+    existing_by_id = {j.id: j for j in existing_jobs}
+    for jid, cand in opt.selected.items():
+        updated = jobs_by_id[jid].model_copy(
+            update={
+                "status": JobStatus.scheduled,
+                "assigned_site_id": cand.site_id,
+                "scheduled_start": cand.start,
+            }
+        )
+        if jid == job.id:
+            placed_new = updated
+        elif jid in existing_by_id:
+            prev = existing_by_id[jid]
+            if (
+                prev.assigned_site_id != updated.assigned_site_id
+                or prev.scheduled_start != updated.scheduled_start
+                or prev.status != updated.status
+            ):
+                rebalanced.append(updated)
+                # Keep session list coherent for subsequent callers.
+                for i, ej in enumerate(existing_jobs):
+                    if ej.id == jid:
+                        existing_jobs[i] = updated
+                        break
+
+    return placed_new, rebalanced
 
 
 def apply_reallocation(request: ReallocationApplyRequest) -> ReallocationApplyResponse:

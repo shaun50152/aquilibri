@@ -159,10 +159,12 @@ function shortJobId(id) {
 
 function siteShortName(site) {
   if (!site) return "—";
-  if (typeof site === "string") {
-    return site.replace(/^site-/, "").replace(/-/g, " ").slice(0, 12) || site;
-  }
-  return site.name || site.site_id;
+  const raw =
+    typeof site === "string" ? site : site.name || site.site_id || "—";
+  // "US-East-1 (Ashburn, VA)" → "Ashburn"
+  const paren = raw.match(/\(([^,)]+)/);
+  if (paren) return paren[1].trim();
+  return String(raw).replace(/^site-/, "").slice(0, 18) || raw;
 }
 
 function hourLabel(isoString) {

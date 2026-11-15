@@ -9,12 +9,13 @@ All timestamps are **timezone-aware UTC** (ISO-8601 with offset or `Z`). Fronten
 ```json
 {
   "status": "ok",
-  "data_mode": "fixtures",
+  "data_mode": "synthetic",
+  "sites_source": "fixtures",
   "demo_session_id": "demo-session-hackuta-2026"
 }
 ```
 
-Never includes API keys or connection strings.
+`data_mode` is `synthetic` (local fixtures) or `live` (MongoDB + Tiger). `sites_source` is `fixtures` or `tiger`. Never includes API keys or connection strings.
 
 ### `GET /api/jobs`
 
@@ -46,9 +47,14 @@ Errors: `422` for unknown template, `deadline <= earliest_start`, or invalid bod
 
 Returns `SiteProfile` list with hourly water/GPU/energy fields (liters, kWh, USD/kWh).
 
-Profiles come from the same in-memory session snapshot the optimizer uses. Select the fixture with `SITE_PROFILES_FIXTURE`:
+Source follows `DATA_MODE`:
 
-| Value | Role |
+| Mode | Source |
+|------|--------|
+| `synthetic` | Local fixture selected by `SITE_PROFILES_FIXTURE` |
+| `live` | Tiger Data only (empty list if Tiger is empty/unavailable — no fixture fallback) |
+
+| `SITE_PROFILES_FIXTURE` | Role (synthetic mode) |
 |-------|------|
 | `sites.json` | Short 3-hour synthetic horizon (missing-coverage tests) |
 | `sites_extended_synthetic.json` | 18-hour explicitly synthetic horizon for runnable previews |
@@ -65,7 +71,8 @@ Profiles come from the same in-memory session snapshot the optimizer uses. Selec
 
 ### `POST /api/demo/reset`
 
-Restores fixture jobs, resets demo clock to anchor, increments `revision`.
+- `DATA_MODE=synthetic` — restores fixture jobs, resets demo clock to anchor, increments `revision`.
+- `DATA_MODE=live` — deletes session jobs/notifications in MongoDB (blank slate), resets clock, increments `revision`.
 
 ## Reallocation preview (implemented)
 
@@ -88,7 +95,7 @@ Emergency:
 {
   "mode": "emergency",
   "emergency_restriction": {
-    "site_id": "site-alpha",
+    "site_id": "us-west-1",
     "water_cap_liters_per_hour": 115.0,
     "start": "2026-03-15T20:00:00+00:00",
     "end": "2026-03-16T12:00:00+00:00"

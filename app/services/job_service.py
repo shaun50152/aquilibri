@@ -81,12 +81,14 @@ def _create_job_locked(payload: JobCreateRequest) -> Job:
         execution_epoch=state.execution_epoch,
     )
 
-    placed = scheduling_service.try_place_submitted_job(
+    placed, rebalanced = scheduling_service.try_place_submitted_job(
         job,
         state.jobs,
         state.sites,
         state.current_time,
     )
+    for other in rebalanced:
+        job_repository.save_job(other)
     saved = job_repository.save_job(placed)
     job_repository.bump_revision()
     return saved

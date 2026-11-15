@@ -33,12 +33,12 @@ class SessionState:
     _jobs_fixture: list[dict[str, Any]] = field(default_factory=list, repr=False)
 
     def reload_from_fixtures(self) -> int:
-        """Deep-copy fixture jobs, restore demo clock, increment revision."""
+        """Deep-copy fixture jobs, restore demo clock, increment revision (synthetic mode)."""
         self.jobs = [Job.model_validate(copy.deepcopy(j)) for j in self._jobs_fixture]
         self.current_time = datetime.fromisoformat(DEMO_CLOCK_ANCHOR_ISO)
         self.revision += 1
         settings = get_settings()
-        if settings.data_mode == "mongodb":
+        if settings.is_live:
             from app.integrations.mongodb import get_mongo_job_store
 
             store = get_mongo_job_store()
@@ -53,6 +53,26 @@ class SessionState:
                 execution_epoch=self.execution_epoch,
             )
         return len(self.jobs)
+
+    def clear_to_blank_slate(self) -> int:
+        """Wipe jobs/notifications clock for live demos; return jobs remaining (0)."""
+        self.jobs = []
+        self.notifications = []
+        self.current_time = datetime.fromisoformat(DEMO_CLOCK_ANCHOR_ISO)
+        self.revision += 1
+        settings = get_settings()
+        if settings.is_live:
+            from app.integrations.mongodb import get_mongo_job_store
+
+            store = get_mongo_job_store()
+            store.clear_session(self.session_id)
+            store.set_session_meta(
+                self.session_id,
+                revision=self.revision,
+                current_time=self.current_time.isoformat(),
+                execution_epoch=self.execution_epoch,
+            )
+        return 0
 
 
 def build_session_state() -> SessionState:
@@ -73,47 +93,49 @@ def build_session_state() -> SessionState:
     execution_epoch: int = 1
     notifications: list[CompletionNotification] = []
 
-    if settings.data_mode == "mongodb":
+    if settings.is_live:
         from app.integrations.mongodb import get_mongo_job_store
 
         store = get_mongo_job_store()
         session_id = settings.demo_session_id
         stored_jobs = store.list_jobs(session_id)
-        if not stored_jobs:
-            jobs = [Job.model_validate(copy.deepcopy(j)) for j in jobs_fixture]
-            revision = fixture_revision
-            current_time = anchor_time
-            store.replace_session_jobs(session_id, [j.model_dump(mode="json") for j in jobs])
+        # Live mode: blank slate when Atlas is empty — never seed mocks.
+        jobs = [Job.model_validate(j) for j in stored_jobs]
+        revision, current_time_str, execution_epoch = store.get_session_meta(session_id)
+        if revision <= 0:
+            revision = 1
+        if execution_epoch <= 0:
+            execution_epoch = 1
+        current_time = (
+            datetime.fromisoformat(current_time_str)
+            if current_time_str
+            else anchor_time
+        )
+        if not stored_jobs and not current_time_str:
+            # First boot with empty DB: persist anchor meta so reset/revision are coherent.
             store.set_session_meta(
                 session_id,
                 revision=revision,
                 current_time=current_time.isoformat(),
                 execution_epoch=execution_epoch,
             )
-        else:
-            jobs = [Job.model_validate(j) for j in stored_jobs]
-            revision, current_time_str, execution_epoch = store.get_session_meta(session_id)
-            if revision <= 0:
-                revision = fixture_revision
-            current_time = (
-                datetime.fromisoformat(current_time_str)
-                if current_time_str
-                else anchor_time
-            )
         notifications = [
             CompletionNotification.model_validate(d) for d in store.list_notifications(session_id)
         ]
+        # Sites come from Tiger at request time; keep fixture snapshot only as unused cache.
+        sites = []
     else:
         jobs = [Job.model_validate(copy.deepcopy(j)) for j in jobs_fixture]
         revision = fixture_revision
         current_time = anchor_time
+        sites = [SiteProfile.model_validate(s) for s in sites_list]
 
     state = SessionState(
         session_id=settings.demo_session_id,
         current_time=current_time,
         revision=revision,
         jobs=jobs,
-        sites=[SiteProfile.model_validate(s) for s in sites_list],
+        sites=sites,
         sites_fixture_name=settings.site_profiles_fixture,
         execution_epoch=execution_epoch,
         notifications=notifications,

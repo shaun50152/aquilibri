@@ -54,5 +54,6 @@ Clients must not connect at import time. Credentials stay in backend `.env` only
 ## Demo state
 
 - **Anchor time:** `2026-03-15T18:00:00+00:00` (see `DEMO_CLOCK_ANCHOR_ISO` in config).
-- **Process lifetime:** In-memory state is lost on server restart; fixtures reload on startup.
-- **Reset:** `POST /api/demo/reset` deep-copies fixture jobs and increments `revision` (stale previews).
+- **DATA_MODE:** `synthetic` loads local fixtures; `live` uses MongoDB + Tiger and boots empty when those stores are empty (no mock seed).
+- **Process lifetime:** Synthetic in-memory state is lost on restart (fixtures reload). Live jobs survive in Atlas across restarts.
+- **Reset:** `POST /api/demo/reset` restores fixtures in synthetic mode, or wipes the Mongo session to a blank slate in live mode; always increments `revision` (stale previews).

@@ -22,11 +22,11 @@ class MongoJobStore:
             return self._db
         uri = get_settings().mongodb_uri
         if not uri:
-            raise RuntimeError("MONGODB_URI is required when DATA_MODE=mongodb")
+            raise RuntimeError("MONGODB_URI is required when DATA_MODE=live")
         try:
             from pymongo import MongoClient
         except ImportError as exc:
-            raise RuntimeError("pymongo is required for DATA_MODE=mongodb") from exc
+            raise RuntimeError("pymongo is required for DATA_MODE=live") from exc
         database = get_settings().mongodb_database
         self._client = MongoClient(uri, serverSelectionTimeoutMS=8000)
         self._db = self._client[database]
@@ -135,6 +135,11 @@ class MongoJobStore:
     def delete_notifications(self, session_id: str) -> int:
         result = self._notifications().delete_many({"session_id": session_id})
         return int(result.deleted_count)
+
+    def clear_session(self, session_id: str) -> None:
+        """Drop all jobs and notifications for a demo session (live blank slate)."""
+        self._jobs().delete_many({"session_id": session_id})
+        self._notifications().delete_many({"session_id": session_id})
 
 
 _store: Optional[MongoJobStore] = None

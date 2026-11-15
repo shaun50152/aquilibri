@@ -539,10 +539,10 @@ if (DEMO) {
   $("list-tag").replaceChildren(visualDemoTag(true));
   for (const id of ["nav-portal", "nav-operator"]) $(id).href += "?demo=1";
   $("d-move").addEventListener("click", () => {
-    // Sample-only: mirror what the operator's demo plan does to JOB-014.
+    // Sample-only: mirror Santa Clara → Dallas move from the operator demo plan.
     const j = DEMO.jobs.jobs.find((x) => x.id === "job-hackuta-0014");
-    if (j && j.assigned_site_id === "site-alpha") {
-      j.assigned_site_id = "site-beta";
+    if (j && j.assigned_site_id === "us-west-1") {
+      j.assigned_site_id = "us-south-central";
       DEMO.jobs.revision += 1;
       selectedJobId = j.id;
       loadAll();

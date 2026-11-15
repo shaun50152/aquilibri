@@ -204,40 +204,46 @@ def test_routine_preserves_workload_and_deadlines():
             assert not o.unfulfilled
 
 
-def test_cheaper_high_water_loses_to_lower_water_within_budget():
-    """Alpha: cheap electricity, high water. Beta: slightly pricier, much lower water."""
-    hours_a = [
-        _hour(NOW + timedelta(hours=i), incr=10.0, energy=1.0, price=0.01, gpu=16, fixed=0.0)
+def test_routine_balanced_spreads_identical_jobs_across_sites():
+    """Equilibrium scoring should alternate identical jobs across Alpha/Beta."""
+    hours = [
+        _hour(NOW + timedelta(hours=i), incr=1.0, energy=1.0, price=0.1, gpu=32, fixed=0.0)
+        for i in range(8)
+    ]
+    sites = [_site("site-alpha", hours), _site("site-beta", list(hours))]
+    jobs = [
+        _job(
+            id=f"job-bal-{i}",
+            eligible_site_ids=["site-alpha", "site-beta"],
+            data_ready_at_by_site={"site-alpha": NOW, "site-beta": NOW},
+            gpu_count=4,
+            duration_hours=1.0,
+            deadline=NOW + timedelta(hours=8),
+        )
         for i in range(4)
     ]
-    hours_b = [
-        _hour(NOW + timedelta(hours=i), incr=1.0, energy=1.0, price=0.02, gpu=16, fixed=0.0)
-        for i in range(4)
-    ]
-    sites = [_site("site-alpha", hours_a), _site("site-beta", hours_b)]
-    job = _job(
-        id="job-water",
-        eligible_site_ids=["site-alpha", "site-beta"],
-        data_ready_at_by_site={"site-alpha": NOW, "site-beta": NOW},
-        gpu_count=4,
-        duration_hours=1.0,
-        deadline=NOW + timedelta(hours=4),
-    )
     snap = SchedulingSnapshot(
         session_id="s",
         revision=1,
         current_time=NOW,
-        jobs=[job],
+        jobs=jobs,
         sites=sites,
         sites_fixture_name="inline-synthetic",
     )
-    # Large allowance so both sites are within budget of the cheap alpha reference.
-    req = ReallocationPreviewRequest(mode=ReallocationMode.routine, max_additional_cost_usd=10.0)
+    req = ReallocationPreviewRequest(mode=ReallocationMode.routine, max_additional_cost_usd=50.0)
     resp = scheduling_service._compute_preview(req, snap, persist=False)
     assert resp.status == PreviewStatus.feasible
-    prop = next(a for a in resp.proposed_assignments if a.job_id == "job-water")
-    assert prop.assigned_site_id == "site-beta"
-    assert resp.metrics_after.total_water_liters < resp.metrics_before.total_water_liters
+    sites_used = {
+        a.assigned_site_id
+        for a in resp.proposed_assignments
+        if not a.unfulfilled and a.assigned_site_id
+    }
+    assert sites_used == {"site-alpha", "site-beta"}
+    counts = {"site-alpha": 0, "site-beta": 0}
+    for a in resp.proposed_assignments:
+        if a.assigned_site_id:
+            counts[a.assigned_site_id] += 1
+    assert abs(counts["site-alpha"] - counts["site-beta"]) <= 1
 
 
 def test_routine_infeasible_on_short_telemetry():
@@ -260,25 +266,26 @@ def test_routine_infeasible_on_short_telemetry():
 
 def test_emergency_limit_only_requested_site_and_window():
     snap = _snapshot()
-    # Cap only alpha; beta unrestricted by emergency.
+    # Cap only alpha tightly enough that 16-GPU alpha windows are eliminated;
+    # beta remains unrestricted by the emergency override.
     req = ReallocationPreviewRequest(
         mode=ReallocationMode.emergency,
         emergency_restriction=EmergencyRestriction(
-            site_id="site-alpha",
-            water_cap_liters_per_hour=115.0,
+            site_id="us-west-1",
+            water_cap_liters_per_hour=100.0,
             start=NOW + timedelta(hours=2),
             end=NOW + timedelta(hours=18),
         ),
     )
     resp = scheduling_service._compute_preview(req, snap, persist=False)
     assert resp.status == PreviewStatus.feasible
-    # Cap 115 L/h blocks 16-GPU alpha placements (fixed≈110 + 16*0.8 > 115).
+    # Cap 100 L/h blocks 16-GPU Santa Clara placements (fixed≈115 + incremental > 100).
     large = next(a for a in resp.proposed_assignments if a.job_id == "job-hackuta-0003")
     assert not large.unfulfilled
-    assert large.assigned_site_id == "site-beta"
-    # Restriction is alpha-only: beta placements are allowed.
+    assert large.assigned_site_id != "us-west-1"
+    # Restriction is Santa Clara-only: other regions remain eligible.
     assert all(
-        c.new_placement.assigned_site_id != "site-alpha"
+        c.new_placement.assigned_site_id != "us-west-1"
         or c.job_id != "job-hackuta-0003"
         for c in resp.proposed_job_changes
     )
@@ -299,7 +306,13 @@ def test_job_can_remain_at_original_site_when_still_best():
     assert resp.status == PreviewStatus.feasible
     # Saved placement for 0001 is alpha @ 19:00; may remain if selected.
     a1 = next(a for a in resp.proposed_assignments if a.job_id == "job-hackuta-0001")
-    assert a1.assigned_site_id in {"site-alpha", "site-beta"}
+    assert a1.assigned_site_id in {
+        "us-east-1",
+        "us-south-central",
+        "us-west-1",
+        "eu-west-1",
+        "ap-northeast",
+    }
     # At least one job keeps an assignment (not all forced to move).
     assert any(not a.unfulfilled for a in resp.proposed_assignments)
 
@@ -324,7 +337,7 @@ def test_critical_jobs_never_silently_dropped():
     req = ReallocationPreviewRequest(
         mode=ReallocationMode.emergency,
         emergency_restriction=EmergencyRestriction(
-            site_id="site-alpha",
+            site_id="us-west-1",
             water_cap_liters_per_hour=0.0,
             start=NOW,
             end=NOW + timedelta(hours=24),
@@ -334,7 +347,7 @@ def test_critical_jobs_never_silently_dropped():
     assert resp.status == PreviewStatus.feasible
     large = next(a for a in resp.proposed_assignments if a.job_id == "job-hackuta-0003")
     assert large.unfulfilled is False
-    assert large.assigned_site_id == "site-beta"
+    assert large.assigned_site_id != "us-west-1"
 
 
 def test_noncritical_unfulfilled_incurs_configured_penalty():

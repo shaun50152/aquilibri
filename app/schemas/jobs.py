@@ -75,12 +75,21 @@ class TemplateDefinition(BaseModel):
     miss_penalty_usd: float
 
 
+# All enterprise demo regions (Ashburn, Dallas, Santa Clara, Dublin, Tokyo).
+_DEMO_ELIGIBLE_SITES = [
+    "us-east-1",
+    "us-south-central",
+    "us-west-1",
+    "eu-west-1",
+    "ap-northeast",
+]
+
 TEMPLATE_DEFINITIONS: dict[JobTemplate, TemplateDefinition] = {
     JobTemplate.inference_batch: TemplateDefinition(
         template=JobTemplate.inference_batch,
         gpu_count=4,
         duration_hours=2.0,
-        eligible_site_ids=["site-alpha", "site-beta"],
+        eligible_site_ids=list(_DEMO_ELIGIBLE_SITES),
         critical=False,
         miss_penalty_usd=50.0,
     ),
@@ -88,7 +97,7 @@ TEMPLATE_DEFINITIONS: dict[JobTemplate, TemplateDefinition] = {
         template=JobTemplate.training_small,
         gpu_count=8,
         duration_hours=6.0,
-        eligible_site_ids=["site-alpha", "site-beta"],
+        eligible_site_ids=list(_DEMO_ELIGIBLE_SITES),
         critical=False,
         miss_penalty_usd=200.0,
     ),
@@ -96,7 +105,7 @@ TEMPLATE_DEFINITIONS: dict[JobTemplate, TemplateDefinition] = {
         template=JobTemplate.training_large,
         gpu_count=16,
         duration_hours=12.0,
-        eligible_site_ids=["site-alpha", "site-beta"],
+        eligible_site_ids=list(_DEMO_ELIGIBLE_SITES),
         critical=True,
         miss_penalty_usd=1000.0,
     ),

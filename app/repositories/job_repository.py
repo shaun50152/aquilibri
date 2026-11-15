@@ -11,7 +11,7 @@ from app.state import get_session_state
 
 
 def _persist_job(job: Job) -> None:
-    if get_settings().data_mode == "mongodb":
+    if get_settings().is_live:
         state = get_session_state()
         get_mongo_job_store().replace_job(state.session_id, job.model_dump(mode="json"))
 
@@ -27,7 +27,7 @@ def persist_session_meta(
     state.current_time = current_time
     state.revision = revision
     state.execution_epoch = execution_epoch
-    if get_settings().data_mode == "mongodb":
+    if get_settings().is_live:
         get_mongo_job_store().set_session_meta(
             session_id,
             revision=revision,

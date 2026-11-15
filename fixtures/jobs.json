@@ -11,15 +11,24 @@
       "deadline": "2026-03-16T06:00:00+00:00",
       "gpu_count": 4,
       "duration_hours": 2.0,
-      "eligible_site_ids": ["site-alpha", "site-beta"],
+      "eligible_site_ids": [
+        "us-east-1",
+        "us-south-central",
+        "us-west-1",
+        "eu-west-1",
+        "ap-northeast"
+      ],
       "data_ready_at_by_site": {
-        "site-alpha": "2026-03-15T18:00:00+00:00",
-        "site-beta": "2026-03-15T18:00:00+00:00"
+        "us-east-1": "2026-03-15T18:00:00+00:00",
+        "us-south-central": "2026-03-15T18:00:00+00:00",
+        "us-west-1": "2026-03-15T18:00:00+00:00",
+        "eu-west-1": "2026-03-15T18:00:00+00:00",
+        "ap-northeast": "2026-03-15T18:00:00+00:00"
       },
       "critical": false,
       "miss_penalty_usd": 50.0,
       "status": "scheduled",
-      "assigned_site_id": "site-alpha",
+      "assigned_site_id": "us-east-1",
       "scheduled_start": "2026-03-15T19:00:00+00:00",
       "completed_at": null,
       "result_url": null
@@ -33,15 +42,24 @@
       "deadline": "2026-03-17T00:00:00+00:00",
       "gpu_count": 8,
       "duration_hours": 6.0,
-      "eligible_site_ids": ["site-alpha", "site-beta"],
+      "eligible_site_ids": [
+        "us-east-1",
+        "us-south-central",
+        "us-west-1",
+        "eu-west-1",
+        "ap-northeast"
+      ],
       "data_ready_at_by_site": {
-        "site-alpha": "2026-03-15T20:00:00+00:00",
-        "site-beta": "2026-03-15T18:00:00+00:00"
+        "us-east-1": "2026-03-15T20:00:00+00:00",
+        "us-south-central": "2026-03-15T18:00:00+00:00",
+        "us-west-1": "2026-03-15T20:00:00+00:00",
+        "eu-west-1": "2026-03-15T19:00:00+00:00",
+        "ap-northeast": "2026-03-15T19:00:00+00:00"
       },
       "critical": false,
       "miss_penalty_usd": 200.0,
       "status": "running",
-      "assigned_site_id": "site-beta",
+      "assigned_site_id": "us-south-central",
       "scheduled_start": "2026-03-15T18:00:00+00:00",
       "completed_at": null,
       "result_url": null
@@ -55,10 +73,19 @@
       "deadline": "2026-03-18T12:00:00+00:00",
       "gpu_count": 16,
       "duration_hours": 12.0,
-      "eligible_site_ids": ["site-alpha", "site-beta"],
+      "eligible_site_ids": [
+        "us-east-1",
+        "us-south-central",
+        "us-west-1",
+        "eu-west-1",
+        "ap-northeast"
+      ],
       "data_ready_at_by_site": {
-        "site-alpha": "2026-03-15T22:00:00+00:00",
-        "site-beta": "2026-03-16T02:00:00+00:00"
+        "us-east-1": "2026-03-15T22:00:00+00:00",
+        "us-south-central": "2026-03-16T02:00:00+00:00",
+        "us-west-1": "2026-03-15T22:00:00+00:00",
+        "eu-west-1": "2026-03-16T00:00:00+00:00",
+        "ap-northeast": "2026-03-16T01:00:00+00:00"
       },
       "critical": true,
       "miss_penalty_usd": 1000.0,
