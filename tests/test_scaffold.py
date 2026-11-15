@@ -161,10 +161,13 @@ def test_emergency_restriction_validation():
         )
 
 
-def test_unimplemented_demo_advance_returns_501(client):
-    response = client.post("/api/demo/advance")
-    assert response.status_code == 501
-    assert "detail" in response.json()
+def test_demo_advance_returns_200(client):
+    before = client.get("/api/demo").json()
+    response = client.post("/api/demo/advance", json={"hours": 1})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["previous_time"] == before["current_time"]
+    assert body["revision"] == before["revision"] + 1
 
 
 def test_reallocation_preview_no_longer_returns_501(client):

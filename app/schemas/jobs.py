@@ -44,6 +44,14 @@ class Job(BaseModel):
     )
     completed_at: Optional[datetime] = None
     result_url: Optional[str] = None
+    result_snapshot: Optional[list[dict[str, str]]] = Field(
+        default=None,
+        description="Immutable simulated CSV rows served by GET /api/jobs/{id}/result.",
+    )
+    execution_epoch: int = Field(
+        default=0,
+        description="Increments on session reset so completion ids cannot be confused across runs.",
+    )
 
 
 class JobCreateRequest(BaseModel):

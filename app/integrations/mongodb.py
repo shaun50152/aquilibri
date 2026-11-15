@@ -9,6 +9,7 @@ from app.config import get_settings
 
 _jobs_collection_name = "jobs"
 _sessions_collection_name = "sessions"
+_notifications_collection_name = "notifications"
 
 
 class MongoJobStore:
@@ -36,6 +37,9 @@ class MongoJobStore:
 
     def _sessions(self):
         return self._ensure_connected()[_sessions_collection_name]
+
+    def _notifications(self):
+        return self._ensure_connected()[_notifications_collection_name]
 
     def ping(self) -> None:
         self._ensure_connected().command("ping")
@@ -83,11 +87,15 @@ class MongoJobStore:
         self.set_revision(session_id, rev)
         return rev
 
-    def get_session_meta(self, session_id: str) -> tuple[int, Optional[str]]:
+    def get_session_meta(self, session_id: str) -> tuple[int, Optional[str], int]:
         doc = self._sessions().find_one({"session_id": session_id})
         if not doc:
-            return 0, None
-        return int(doc.get("revision", 0)), doc.get("current_time")
+            return 0, None, 0
+        return (
+            int(doc.get("revision", 0)),
+            doc.get("current_time"),
+            int(doc.get("execution_epoch", 0)),
+        )
 
     def set_session_meta(
         self,
@@ -95,6 +103,7 @@ class MongoJobStore:
         *,
         revision: int,
         current_time: Optional[str] = None,
+        execution_epoch: Optional[int] = None,
     ) -> None:
         payload: dict[str, Any] = {
             "session_id": session_id,
@@ -103,11 +112,29 @@ class MongoJobStore:
         }
         if current_time is not None:
             payload["current_time"] = current_time
+        if execution_epoch is not None:
+            payload["execution_epoch"] = int(execution_epoch)
         self._sessions().update_one(
             {"session_id": session_id},
             {"$set": payload},
             upsert=True,
         )
+
+    def list_notifications(self, session_id: str) -> list[dict[str, Any]]:
+        cursor = self._notifications().find({"session_id": session_id}).sort("completed_at", 1)
+        return [{k: v for k, v in doc.items() if k != "_id"} for doc in cursor]
+
+    def upsert_notification(self, record: dict[str, Any]) -> None:
+        coll = self._notifications()
+        coll.replace_one(
+            {"dedupe_key": record["dedupe_key"]},
+            record,
+            upsert=True,
+        )
+
+    def delete_notifications(self, session_id: str) -> int:
+        result = self._notifications().delete_many({"session_id": session_id})
+        return int(result.deleted_count)
 
 
 _store: Optional[MongoJobStore] = None

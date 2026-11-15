@@ -22,6 +22,23 @@ let selectedJobId = null;
 let successJobId = null;
 let loadedOnce = false;
 let pollTimer = null;
+const SEEN_NOTICES_KEY = "aq.seenNotifications";
+function loadSeenNotices() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(SEEN_NOTICES_KEY) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+function saveSeenNotices() {
+  try {
+    localStorage.setItem(SEEN_NOTICES_KEY, JSON.stringify([...seenNotificationIds].slice(-200)));
+  } catch {
+    /* storage unavailable: dedupe stays per page load */
+  }
+}
+let seenNotificationIds = loadSeenNotices();
+let lastRevision = null;
 const pendingFalls = []; // a just-submitted job drops into its tank, or the queue well
 const placements = []; // queued jobs the scheduler just placed: hop from the queue well
 let submitting = false;
@@ -376,7 +393,7 @@ function renderSuccess() {
     : "Accepted and queued. The scheduler is choosing a site now.";
 }
 
-function showCompletion(job) {
+function showCompletion(job, { toastIt = true } = {}) {
   const id = shortJobId(job.id);
   $("notice-title").textContent = `${id} is done.`;
   const fin = job.completed_at ? new Date(job.completed_at).getTime() : null;
@@ -387,32 +404,54 @@ function showCompletion(job) {
   parts.push(job.result_url ? "Your sample result is ready below." : "The sample result is not ready yet.");
   $("notice-text").textContent = parts.join(" ");
   $("notice").hidden = false;
-  toast(`${id} completed.`);
+  if (toastIt) toast(`${id} completed.`);
+}
+
+function syncNotifications(notesResp) {
+  if (!notesResp || DEMO) return;
+  let changed = false;
+  for (const n of notesResp.notifications || []) {
+    if (seenNotificationIds.has(n.id)) continue;
+    seenNotificationIds.add(n.id);
+    changed = true;
+    const job = jobs.find((j) => j.id === n.job_id);
+    if (job && (!ownerId || job.owner_id === ownerId)) showCompletion(job);
+  }
+  if (changed) saveSeenNotices();
 }
 
 /* ---------- data ---------- */
 async function fetchAll() {
-  if (DEMO) return [DEMO, DEMO.sitesResponse, DEMO.jobs];
-  return Promise.all([getDemo(), getSites(), getJobs()]);
+  if (DEMO) return [DEMO, DEMO.sitesResponse, DEMO.jobs, null];
+  const [demo, sitesResp, jobsResp, notesResp] = await Promise.all([
+    getDemo(),
+    getSites(),
+    getJobs(),
+    getNotifications(),
+  ]);
+  return [demo, sitesResp, jobsResp, notesResp];
 }
 
+let loadAllInFlight = false;
 async function loadAll({ first = false } = {}) {
+  if (loadAllInFlight && !first) return;
+  loadAllInFlight = true;
   try {
-    const [demo, sitesResp, jobsResp] = await fetchAll();
+    const [demo, sitesResp, jobsResp, notesResp] = await fetchAll();
     setError($("demo-error"), null);
     setError($("list-error"), null);
     clockIso = demo.current_time;
     sites = sitesResp.sites || [];
     jobs = jobsResp.jobs || [];
+    if (lastRevision != null && jobsResp.revision < lastRevision) obs.clear();
+    lastRevision = jobsResp.revision;
     ownerId = ownerId || jobs.find((j) => j.owner_id === "demo-user-001")?.owner_id || jobs[0]?.owner_id || null;
     if (first) {
       if (!earliestInput.value) earliestInput.value = toDatetimeLocalValue(clockIso);
       if (!deadlineInput.value) deadlineInput.value = toDatetimeLocalValue(addHoursToIso(clockIso, DEFAULT_WINDOW_HOURS));
     }
-    for (const job of jobs) {
-      const { completedNow } = observe(job, false);
-      if (completedNow && loadedOnce && (!ownerId || job.owner_id === ownerId)) showCompletion(job);
-    }
+    for (const job of jobs) observe(job, false);
+    syncNotifications(notesResp);
     if (!selectedJobId || !jobs.some((j) => j.id === selectedJobId)) selectedJobId = myJobs()[0]?.id || null;
     renderHeader();
     renderList();
@@ -425,6 +464,8 @@ async function loadAll({ first = false } = {}) {
     $("jobs-skeleton").hidden = true;
     const msg = err.status ? err.message : "Network error. Is the API server running?";
     setError($("list-error"), `Could not load jobs. ${msg}`);
+  } finally {
+    loadAllInFlight = false;
   }
 }
 

@@ -2,21 +2,21 @@
 
 **Aqualibri** is an AI-powered, water-aware workload orchestration platform that dynamically optimizes AI data center scheduling and redistributes workloads to reduce water consumption, manage resource constraints, and minimize operational costs.
 
-This repository is the **HackUTA scaffold**: a runnable local demo using fixture-backed jobs and site profiles. Cloud integrations (MongoDB Atlas, Tiger Data, Gemini, SciPy MILP) are stubbed with clear boundaries.
+This repository is the **HackUTA scaffold**: a runnable local demo using fixture-backed jobs and site profiles (or optional MongoDB Atlas persistence). Tiger Data and Gemini NL parsing remain future work.
 
 ## What works now
 
-- User portal at `/portal` — submit jobs (three templates), list queue, demo clock
-- Operator dashboard at `/operator` — sites, shared job queue, reset demo
+- User portal at `/portal` — submit jobs, track running/completed state, completion notice, CSV download
+- Operator dashboard at `/operator` — sites, preview/apply reallocation, **advance simulated clock**, reset demo
 - REST API with OpenAPI at `/docs`
-- In-memory session state with `POST /api/demo/reset`
-- Sample reallocation preview JSON under `fixtures/preview_*.json` for UI prototyping
+- `POST /api/demo/advance` — deterministic job start/finish + notifications + CSV results
+- `POST /api/reallocation/preview` and `POST /api/reallocation/apply` with revision stale checks
+- Optional `DATA_MODE=mongodb` for persistent jobs, clock, notifications, and results
+- Sample reallocation preview JSON under `fixtures/preview_*.json` for visual demo mode
 
 ## Not implemented yet
 
-- `POST /api/reallocation/apply` (returns **501** — Person 1; previews are cached for handoff)
-- `POST /api/demo/advance` (returns **501**)
-- MongoDB, Tiger Data, Gemini NL parsing, simulated job worker ticks
+- Tiger Data telemetry, Gemini NL-only preview parsing
 
 `POST /api/reallocation/preview` is implemented (routine + emergency MILP). Site profiles prefer Tiger Data when `PG*` env vars are set (`python scripts/seed_tiger_sites.py` seeds tables); otherwise the selected `SITE_PROFILES_FIXTURE` is used. `POST /api/operator/chat` adds Gemini tool-calling on top of the same preview engine without replacing the manual preview route.
 

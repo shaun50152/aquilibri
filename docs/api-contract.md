@@ -115,13 +115,64 @@ Gemini tool-calling assistant. Same placement engine as manual preview.
 
 Returns `assistant_message`, `tool_calls`, and optional `preview` (`ReallocationPreviewResponse`). Manual `POST /api/reallocation/preview` remains fully functional.
 
-## Still 501
+### `POST /api/reallocation/apply`
 
-| Method | Path | Request highlights |
-|--------|------|--------------------|
-| POST | `/api/demo/advance` | (no body) advances simulated clock |
+```json
+{ "preview_id": "preview-…", "input_revision": 2 }
+```
 
-`501` body: `{ "detail": "<reason>" }`.
+Success: `{ "applied": true, "revision": 3, "message": "…" }`. Stale previews → **409**.
+
+### `POST /api/demo/advance`
+
+Body (optional — defaults to **1 hour**):
+
+```json
+{ "hours": 1, "expected_revision": 2 }
+```
+
+Success:
+
+```json
+{
+  "session_id": "demo-session-hackuta-2026",
+  "revision": 3,
+  "previous_time": "2026-03-15T18:00:00+00:00",
+  "current_time": "2026-03-15T19:00:00+00:00",
+  "hours_advanced": 1,
+  "jobs_started": ["job-hackuta-0001"],
+  "jobs_completed": [],
+  "jobs_failed": []
+}
+```
+
+Invalid `hours` (≤ 0, non-finite) → **422**. Stale `expected_revision` → **409**.
+
+### `GET /api/notifications`
+
+Scoped to the demo session and owner `demo-user-001`:
+
+```json
+{
+  "session_id": "demo-session-hackuta-2026",
+  "owner_id": "demo-user-001",
+  "revision": 4,
+  "notifications": [
+    {
+      "id": "notif-job-hackuta-0001-e1",
+      "job_id": "job-hackuta-0001",
+      "completed_at": "2026-03-15T21:00:00+00:00",
+      "message": "Simulated workload job-hackuta-0001 finished.",
+      "result_url": "/api/jobs/job-hackuta-0001/result",
+      "dedupe_key": "demo-session-hackuta-2026:job-hackuta-0001:e1"
+    }
+  ]
+}
+```
+
+### `GET /api/jobs/{job_id}/result`
+
+Completed jobs only. Returns **`text/csv`** attachment (`{job_id}-simulated-result.csv`) built from the immutable `result_snapshot` on the job document.
 
 ### Emergency restriction validation
 
@@ -129,7 +180,7 @@ Returns `assistant_message`, `tool_calls`, and optional `preview` (`Reallocation
 
 ## Revision and stale previews
 
-- `revision` increases on job create, demo reset, and (future) successful apply.
+- `revision` increases on job create, demo reset, successful apply, and each demo advance.
 - Preview responses include `input_revision`; apply must match current revision or be rejected (future).
 
 ## Sample preview JSON

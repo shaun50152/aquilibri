@@ -121,7 +121,7 @@ function numberWord(n) {
 function siteShort(site) {
   if (!site) return "—";
   const name = typeof site === "string" ? site : site.name || site.site_id;
-  return String(name).replace(/\s+DC$/i, "");
+  return String(name).replace(/\s*\([^)]*\)\s*$/, "").replace(/\s+DC$/i, "");
 }
 
 /* ---------- status ---------- */
@@ -371,6 +371,10 @@ function drawTanks(svgEl, overlayEl, view) {
     T.gpuFill.setAttribute("fill", hot ? "#FFB37A" : "#FFFFFF");
     if (T.label) {
       T.label.textContent = s.short;
+      T.label.setAttribute("font-size", 21);
+      const maxW = G.SLOT - 10;
+      const w = T.label.getComputedTextLength ? T.label.getComputedTextLength() : 0;
+      if (w > maxW) T.label.setAttribute("font-size", Math.max(11, Math.floor((21 * maxW) / w)));
       T.label.setAttribute("opacity", s.highlight ? "1" : ".75");
     }
     // landing ripple at the water surface, once per apply

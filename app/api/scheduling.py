@@ -7,7 +7,7 @@ from app.schemas.scheduling import (
     ReallocationPreviewRequest,
     ReallocationPreviewResponse,
 )
-from app.services import demo_worker, scheduling_service
+from app.services import scheduling_service
 from app.services.scheduling_service import ApplyReallocationError, PreviewRequestError
 from app.state import get_session_state
 
@@ -59,11 +59,3 @@ def reallocation_apply(request: ReallocationApplyRequest):
         return _not_implemented(str(exc))
 
 
-@router.post("/api/demo/advance")
-def demo_advance():
-    try:
-        state = get_session_state()
-        demo_worker.advance_demo_clock(state.current_time, 1.0)
-    except NotImplementedError as exc:
-        return _not_implemented(str(exc))
-    raise HTTPException(status_code=500, detail="Unexpected advance success in scaffold.")

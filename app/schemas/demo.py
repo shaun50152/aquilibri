@@ -21,6 +21,25 @@ class DemoResetResponse(BaseModel):
     current_time: datetime
 
 
+class DemoAdvanceRequest(BaseModel):
+    hours: float = Field(default=1.0, gt=0, description="Simulated hours to advance (fractional ok).")
+    expected_revision: int | None = Field(
+        default=None,
+        description="When set, advance is rejected with 409 if it does not match the live revision.",
+    )
+
+
+class DemoAdvanceResponse(BaseModel):
+    session_id: str
+    revision: int
+    previous_time: datetime
+    current_time: datetime
+    hours_advanced: float
+    jobs_started: list[str]
+    jobs_completed: list[str]
+    jobs_failed: list[str]
+
+
 class OperatorChatRequest(BaseModel):
     prompt: str = Field(min_length=1, description="Raw operator natural-language instruction.")
 

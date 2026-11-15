@@ -197,11 +197,11 @@ textarea.fld { padding: 10px 12px; resize: vertical; line-height: 1.45; min-heig
 .jFill { height: 100%; width: 0; background-color: var(--teal); border-radius: 6px; transition: width 1.1s cubic-bezier(.2,.8,.2,1); }
 .fillRun { background-image: repeating-linear-gradient(115deg, rgba(255,255,255,.35) 0 8px, transparent 8px 16px); background-size: 40px 100%; animation: stripesP 1.2s linear infinite; }
 .jStep { position: absolute; top: 6px; width: 24px; height: 24px; margin-left: -12px; border-radius: 50%; background: #fff; border: 2.5px solid #C9D6D6; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 700; transition: background .5s ease, border-color .5s ease; }
-.jLabels { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; text-align: center; }
+.jLabels { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px 4px; text-align: center; }
 .jLabel { display: flex; flex-direction: column; gap: 1px; }
 .jLabel strong { font-size: 13px; font-weight: 500; color: var(--ink-2); }
 .jLabel.isOn strong { color: var(--ink); font-weight: 600; }
-.jTime { font-size: 11.5px; color: var(--ink-2); }
+.jTime { font-size: 10.5px; color: var(--ink-2); line-height: 1.25; overflow-wrap: anywhere; word-break: break-word; }
 .jProg { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 14px; background: #F5F8F8; }
 .jProgLine { font-size: 14px; font-weight: 600; }
 .jBasis { font-size: 11.5px; color: var(--ink-2); }
@@ -214,7 +214,8 @@ textarea.fld { padding: 10px 12px; resize: vertical; line-height: 1.45; min-heig
 .actDot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--teal); }
 .actLine { flex: 1; width: 1.5px; background: var(--line); }
 .actText { font-size: 13.5px; line-height: 1.45; }
-.dl { margin: 14px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13.5px; }
+.dl { margin: 14px 0 0; display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 8px 12px; font-size: 13.5px; align-items: baseline; }
+.dl dd.mono { overflow-wrap: anywhere; word-break: break-word; font-size: 12.5px; line-height: 1.35; }
 .dl dt { color: var(--ink-2); }
 .dl dd { margin: 0; }
 .dl dd.strong { font-weight: 600; }

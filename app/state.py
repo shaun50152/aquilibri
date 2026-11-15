@@ -11,6 +11,7 @@ from typing import Any
 
 from app.config import DEMO_CLOCK_ANCHOR_ISO, FIXTURES_DIR, get_settings
 from app.schemas.jobs import Job
+from app.schemas.notifications import CompletionNotification
 from app.schemas.sites import SiteProfile
 
 
@@ -27,6 +28,8 @@ class SessionState:
     jobs: list[Job] = field(default_factory=list)
     sites: list[SiteProfile] = field(default_factory=list)
     sites_fixture_name: str = "sites.json"
+    execution_epoch: int = 1
+    notifications: list[CompletionNotification] = field(default_factory=list)
     _jobs_fixture: list[dict[str, Any]] = field(default_factory=list, repr=False)
 
     def reload_from_fixtures(self) -> int:
@@ -47,6 +50,7 @@ class SessionState:
                 self.session_id,
                 revision=self.revision,
                 current_time=self.current_time.isoformat(),
+                execution_epoch=self.execution_epoch,
             )
         return len(self.jobs)
 
@@ -66,6 +70,8 @@ def build_session_state() -> SessionState:
     jobs: list[Job]
     revision: int
     current_time: datetime
+    execution_epoch: int = 1
+    notifications: list[CompletionNotification] = []
 
     if settings.data_mode == "mongodb":
         from app.integrations.mongodb import get_mongo_job_store
@@ -82,10 +88,11 @@ def build_session_state() -> SessionState:
                 session_id,
                 revision=revision,
                 current_time=current_time.isoformat(),
+                execution_epoch=execution_epoch,
             )
         else:
             jobs = [Job.model_validate(j) for j in stored_jobs]
-            revision, current_time_str = store.get_session_meta(session_id)
+            revision, current_time_str, execution_epoch = store.get_session_meta(session_id)
             if revision <= 0:
                 revision = fixture_revision
             current_time = (
@@ -93,6 +100,9 @@ def build_session_state() -> SessionState:
                 if current_time_str
                 else anchor_time
             )
+        notifications = [
+            CompletionNotification.model_validate(d) for d in store.list_notifications(session_id)
+        ]
     else:
         jobs = [Job.model_validate(copy.deepcopy(j)) for j in jobs_fixture]
         revision = fixture_revision
@@ -105,6 +115,8 @@ def build_session_state() -> SessionState:
         jobs=jobs,
         sites=[SiteProfile.model_validate(s) for s in sites_list],
         sites_fixture_name=settings.site_profiles_fixture,
+        execution_epoch=execution_epoch,
+        notifications=notifications,
         _jobs_fixture=copy.deepcopy(jobs_fixture),
     )
     return state

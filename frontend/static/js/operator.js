@@ -30,6 +30,7 @@ let focusMove = true;
 let instructionDirty = false;
 let fieldsInitialised = false;
 let advanceUnavailable = null;
+let advancing = false;
 let demoOutcome = "feasible";
 let panelSig = "";
 let pollTimer = null;
@@ -835,29 +836,53 @@ $("drawer-close").addEventListener("click", () => {
   renderAll();
 });
 
-$("advance-btn").addEventListener("click", async () => {
+async function onAdvance() {
+  if (advancing) return;
+  const hours = Number($("advance-hours")?.value || 1);
   if (DEMO) {
-    DEMO.current_time = addHoursToIso(DEMO.current_time, 1);
+    DEMO.current_time = addHoursToIso(DEMO.current_time, hours);
     return loadAll();
   }
+  advancing = true;
+  advanceUnavailable = null;
+  $("advance-btn").disabled = true;
+  if ($("advance-hours")) $("advance-hours").disabled = true;
+  renderAll();
   try {
-    const res = await advanceDemo();
-    if (res.unavailable) {
-      advanceUnavailable = res.detail;
-      $("advance-btn").disabled = true;
-      renderAll();
-      return;
+    await advanceDemo({ hours, expected_revision: revision });
+    if (preview && preview.input_revision !== revision) {
+      preview = null;
+      previewState = "none";
+      applied = null;
+      applyUnavailable = null;
     }
     await loadAll();
+    toast(`Clock advanced ${hours} h · revision ${revision}.`);
   } catch (err) {
     toast(`Could not advance. ${err.message}`);
+  } finally {
+    advancing = false;
+    $("advance-btn").disabled = false;
+    if ($("advance-hours")) $("advance-hours").disabled = false;
+    renderAll();
   }
-});
+}
+function updateAdvanceButtonLabel() {
+  const h = Number($("advance-hours")?.value || 1);
+  const label = Number.isFinite(h) && h > 0 ? `Advance +${h} h` : "Advance";
+  $("advance-btn").textContent = label;
+}
+if ($("advance-hours")) {
+  $("advance-hours").addEventListener("change", updateAdvanceButtonLabel);
+}
+updateAdvanceButtonLabel();
+$("advance-btn").addEventListener("click", onAdvance);
 
 $("reset-btn").addEventListener("click", async () => {
   try {
     if (DEMO) DEMO = freshDemo();
     else await resetDemo();
+    advanceUnavailable = null;
     declared = null;
     preview = null;
     previewState = "none";

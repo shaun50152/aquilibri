@@ -1,17 +1,21 @@
 import json
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status
 
 from app.config import FIXTURES_DIR
 from app.integrations.gemini import GeminiSchedulingAssistant, GeminiSchedulingError
 from app.schemas.demo import (
+    DemoAdvanceRequest,
+    DemoAdvanceResponse,
     DemoResetResponse,
     DemoState,
     OperatorChatRequest,
     OperatorChatResponse,
 )
 from app.schemas.scheduling import ReallocationPreviewResponse
+from app.services import demo_service
+from app.session_lock import SessionConflictError
 from app.state import get_session_state
 
 router = APIRouter(tags=["operator", "demo"])
@@ -36,13 +40,33 @@ def get_demo_state():
 @router.post("/api/demo/reset", response_model=DemoResetResponse)
 def reset_demo():
     state = get_session_state()
-    count = state.reload_from_fixtures()
+    count, revision = demo_service.reset_demo_session()
     return DemoResetResponse(
         session_id=state.session_id,
-        revision=state.revision,
+        revision=revision,
         jobs_restored=count,
-        current_time=state.current_time,
+        current_time=get_session_state().current_time,
     )
+
+
+@router.post(
+    "/api/demo/advance",
+    response_model=DemoAdvanceResponse,
+    responses={409: {"description": "Stale session revision"}, 422: {"description": "Invalid hours"}},
+)
+def demo_advance(
+    body: DemoAdvanceRequest | None = Body(default=None),
+):
+    req = body or DemoAdvanceRequest()
+    try:
+        return demo_service.advance_session(
+            hours=req.hours,
+            expected_revision=req.expected_revision,
+        )
+    except SessionConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.get(

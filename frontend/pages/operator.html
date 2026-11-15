@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet" />
   <link rel="icon" href="data:," />
-  <link rel="stylesheet" href="/static/css/styles.css" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=3" />
 </head>
 <body class="page--operator">
 <div class="shell">
@@ -25,6 +25,12 @@
         <span class="clockDot blink" aria-hidden="true"></span><span class="clockSim">Sim</span><strong class="mono" id="demo-clock">—</strong>
       </div>
       <button type="button" class="btn btnGhost" id="advance-btn">Advance +1 h</button>
+      <label class="vh" for="advance-hours">Simulated hours</label>
+      <select class="btn btnGhost" id="advance-hours" aria-label="Hours to advance">
+        <option value="1" selected>1 h</option>
+        <option value="3">3 h</option>
+        <option value="6">6 h</option>
+      </select>
       <button type="button" class="btn btnGhost" id="reset-btn">Reset</button>
       <button type="button" class="btn btnGhost" id="visual-demo-toggle" aria-pressed="false">Visual demo</button>
     </div>
@@ -212,9 +218,9 @@
   <footer class="foot" id="foot">Figures come from /api/sites, /api/jobs, /api/demo and /api/reallocation/*. GPU load and water are modeled from those fields. Unfinished endpoints say so.</footer>
 </div>
 
-  <script src="/static/js/api.js"></script>
-  <script src="/static/js/ui.js"></script>
-  <script src="/static/js/demo-data.js"></script>
-  <script src="/static/js/operator.js"></script>
+  <script src="/static/js/api.js?v=3"></script>
+  <script src="/static/js/ui.js?v=3"></script>
+  <script src="/static/js/demo-data.js?v=3"></script>
+  <script src="/static/js/operator.js?v=3"></script>
 </body>
 </html>
