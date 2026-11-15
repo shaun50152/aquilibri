@@ -3,60 +3,107 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AquaLibri — Operator</title>
+  <title>AquaLibri — Equilibrium Operator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;1,900&family=Raleway:wght@700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
-<body>
-  <header>
-    <div class="wrap" style="padding:0">
-      <h1>Operator dashboard</h1>
-      <p><a href="/portal">← User portal</a></p>
+<body class="page page--operator">
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="bg-word" aria-hidden="true">BALANCE</div>
+
+  <header class="site-header glass" role="banner">
+    <div class="wrap header-inner">
+      <div>
+        <p class="kicker">Fleet equilibrium instrument</p>
+        <h1 class="display-title">Operator <em>Console</em></h1>
+        <p class="sr-only">Operator dashboard</p>
+        <p class="sim-banner num" id="sim-banner">SIMULATED · — SITES · NO REAL GPUS</p>
+        <p class="header-clock num"><span class="label-inline">Simulation clock (UTC):</span> <span id="demo-clock">—</span></p>
+      </div>
+      <nav class="header-actions" aria-label="Console controls">
+        <a class="btn btn--ghost" href="/portal">Portal</a>
+        <button type="button" class="btn btn--ghost" id="visual-demo-toggle">Visual demo</button>
+        <button type="button" class="btn btn--secondary" id="advance-btn">Advance +1 h</button>
+        <button type="button" class="btn btn--apply" id="reset-btn">Reset demo</button>
+        <button type="button" class="btn btn--secondary" id="refresh-btn">Refresh</button>
+      </nav>
     </div>
+    <div class="wrap status-band" id="status-band" aria-live="polite"></div>
   </header>
 
-  <main class="wrap">
-    <div class="banner">
-      <div>
-        <strong>Demo clock:</strong> <span id="demo-clock">—</span>
-        <span class="badge">Simulated fixture data</span>
+  <main class="wrap layout-2col">
+    <section class="glass neon stack">
+      <h2 class="panel-title">Fleet ring</h2>
+      <p class="small">GPU load from assignments · hourly water modeled from site profiles</p>
+      <div id="ring-visual-demo-slot"></div>
+      <svg id="fleet-ring" class="fleet-ring" viewBox="0 0 720 720" role="img" aria-label="Fleet topology ring"></svg>
+      <div id="drawer" class="drawer" hidden>
+        <h3 class="panel-title" id="drawer-title">Site</h3>
+        <p id="drawer-body" class="body-serif"></p>
+        <button type="button" class="btn btn--secondary" id="drawer-close">Close</button>
       </div>
-      <div class="toolbar" style="margin:0">
-        <button type="button" class="secondary" id="refresh-btn">Refresh</button>
-        <button type="button" id="reset-btn">Reset demo</button>
-      </div>
-    </div>
-    <div id="op-error" class="error" hidden></div>
-
-    <section class="card">
-      <h2>Sites</h2>
-      <div class="grid-2" id="sites-grid"></div>
+      <svg id="water-chart" class="water-chart" aria-hidden="false" role="img" aria-label="Hourly modeled water"></svg>
     </section>
 
-    <section class="card">
-      <h2>Job queue</h2>
-      <table id="jobs-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Status</th>
-            <th>GPUs</th>
-            <th>Site</th>
-            <th>Start</th>
-            <th>Deadline</th>
-          </tr>
-        </thead>
-        <tbody id="jobs-body"></tbody>
-      </table>
+    <section class="paper stack">
+      <h2 class="panel-title">Schedule request</h2>
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab is-active" role="tab" id="tab-routine" aria-selected="true" aria-controls="panel-routine">Routine</button>
+        <button type="button" class="tab" role="tab" id="tab-emergency" aria-selected="false" aria-controls="panel-emergency">Emergency</button>
+      </div>
+      <div id="panel-routine" role="tabpanel">
+        <label class="field-label" for="budget">Max additional cost (USD)</label>
+        <input class="input" id="budget" type="number" min="0" step="1" placeholder="Optional" />
+      </div>
+      <div id="panel-emergency" role="tabpanel" hidden>
+        <label class="field-label" for="emer-site">Site</label>
+        <select class="input" id="emer-site"></select>
+        <label class="field-label" for="emer-cap">Water cap (L/h)</label>
+        <input class="input" id="emer-cap" type="number" min="0" />
+        <label class="field-label" for="emer-start">Start (UTC)</label>
+        <input class="input" id="emer-start" type="datetime-local" />
+        <label class="field-label" for="emer-end">End (UTC)</label>
+        <input class="input" id="emer-end" type="datetime-local" />
+      </div>
+      <label class="field-label" for="instruction">Instruction for Gemini</label>
+      <textarea class="input" id="instruction" rows="3" placeholder="Optional natural language request"></textarea>
+      <div id="demo-preview-choices" class="demo-preview-choices" hidden></div>
+      <button type="button" class="btn btn--primary-dark" id="preview-btn">Preview schedule</button>
+      <div id="preview-panel" class="preview-panel" aria-live="polite"></div>
+      <div class="toolbar">
+        <button type="button" class="btn btn--apply" id="apply-btn" disabled>Apply</button>
+        <button type="button" class="btn btn--secondary" id="discard-btn" disabled>Discard</button>
+      </div>
     </section>
 
-    <section class="card coming-soon">
-      <h2>Reallocation (coming next)</h2>
-      <p>Routine and emergency scheduling preview/apply will call <code>/api/reallocation/*</code> once the MILP + Gemini integration lands.</p>
-      <p class="muted">Sample preview JSON lives in <code>fixtures/preview_*.json</code> for UI prototyping.</p>
+    <section class="paper stack layout-full">
+      <h2 class="panel-title">Job queue</h2>
+      <p id="op-error" class="alert alert--error" hidden></p>
+      <div class="table-scroll">
+        <table class="data-table" id="queue-table">
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Template</th>
+              <th scope="col">Status</th>
+              <th scope="col">Site</th>
+              <th scope="col">Proposed site</th>
+              <th scope="col">Applied site</th>
+              <th scope="col">Deadline (UTC)</th>
+            </tr>
+          </thead>
+          <tbody id="jobs-body"></tbody>
+        </table>
+      </div>
     </section>
   </main>
 
   <script src="/static/js/api.js"></script>
+  <script src="/static/js/ui.js"></script>
+  <script src="/static/js/demo-data.js"></script>
   <script src="/static/js/operator.js"></script>
 </body>
 </html>

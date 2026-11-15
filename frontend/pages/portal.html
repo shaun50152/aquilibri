@@ -3,72 +3,117 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AquaLibri — User Portal</title>
+  <title>AquaLibri — Equilibrium Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;1,900&family=Raleway:wght@700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
-<body>
-  <header>
-    <div class="wrap" style="padding:0">
-      <h1>AquaLibri</h1>
-      <p>Water-aware batch job submission · <a href="/operator">Operator dashboard</a></p>
+<body class="page page--portal">
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="bg-word" aria-hidden="true">EQUILIBRIUM</div>
+
+  <header class="site-header glass" role="banner">
+    <div class="wrap header-inner">
+      <div>
+        <p class="kicker">AquaLibri · Simulated fleet</p>
+        <h1 class="display-title">User <em>Portal</em></h1>
+        <p class="sim-banner num" id="sim-banner">SIMULATED · — SITES · NO REAL GPUS</p>
+        <p class="header-clock num"><span class="label-inline">Simulation clock (UTC):</span> <span id="demo-clock">—</span></p>
+      </div>
+      <nav class="header-actions" aria-label="Page navigation">
+        <button type="button" class="btn btn--ghost" id="visual-demo-toggle" aria-label="Toggle visual demo mode">Visual demo</button>
+        <a class="btn btn--primary-dark" href="/operator">Operator</a>
+      </nav>
+    </div>
+    <div class="wrap">
+      <div class="status-band" id="status-band" aria-live="polite">
+        <span class="muted">Session <span id="demo-session" class="num">—</span></span>
+        <span class="muted">Revision <span id="demo-revision" class="num">—</span></span>
+      </div>
+      <div id="demo-error" class="alert alert--error" hidden></div>
     </div>
   </header>
 
-  <main class="wrap">
-    <div class="banner">
-      <div>
-        <strong>Demo clock:</strong> <span id="demo-clock">—</span>
-        <span class="badge">Simulated fixture data</span>
-      </div>
-      <div class="muted">Session <span id="demo-session">—</span> · revision <span id="demo-revision">—</span></div>
-    </div>
+  <main class="wrap layout-2col">
+    <section class="hero neon paper">
+      <p class="hero-kicker">Water-aware batch scheduling</p>
+      <h2 class="panel-title">Submit workload</h2>
+      <p class="body-serif">All data centers and GPU execution are <strong>simulated</strong>. Templates resolve GPU count and duration on the server.</p>
+      <div id="topology-mini" class="topology-mini" aria-label="Fleet topology highlights assigned site"></div>
 
-    <section class="card">
-      <h2>Submit a job</h2>
-      <p class="muted">Templates resolve GPU count and duration on the server. Times are stored as UTC.</p>
-      <form id="job-form" novalidate>
-        <label for="template">Template</label>
-        <select id="template" name="template" required>
-          <option value="inference_batch">Inference batch (4 GPU · 2 h)</option>
-          <option value="training_small">Training small (8 GPU · 6 h)</option>
-          <option value="training_large">Training large (16 GPU · 12 h)</option>
-        </select>
+      <form id="job-form" class="stack" novalidate>
+        <fieldset class="field">
+          <legend class="field-label">Template</legend>
+          <div class="template-radios" role="radiogroup" aria-label="Job template">
+            <label class="template-card"><input type="radio" name="template" value="inference_batch" checked /> Inference batch <span class="small">4 GPU · 2 h</span></label>
+            <label class="template-card"><input type="radio" name="template" value="training_small" /> Training small <span class="small">8 GPU · 6 h</span></label>
+            <label class="template-card"><input type="radio" name="template" value="training_large" /> Training large <span class="small">16 GPU · 12 h</span></label>
+          </div>
+        </fieldset>
 
-        <label for="earliest_start">Earliest start (UTC)</label>
-        <input id="earliest_start" name="earliest_start" type="datetime-local" required />
+        <div class="field">
+          <label class="field-label" for="earliest_start">Earliest start (UTC)</label>
+          <input class="input" id="earliest_start" name="earliest_start" type="datetime-local" required />
+        </div>
+        <div class="field">
+          <label class="field-label" for="deadline">Deadline (UTC)</label>
+          <input class="input" id="deadline" name="deadline" type="datetime-local" required />
+        </div>
 
-        <label for="deadline">Deadline (UTC)</label>
-        <input id="deadline" name="deadline" type="datetime-local" required />
+        <div id="estimate-box" class="estimate-box" role="status"></div>
 
-        <button type="submit" id="submit-btn">Submit job</button>
+        <button type="submit" class="btn btn--primary btn--portal" id="submit-btn">
+          <span id="submit-label">Submit job</span>
+          <span class="spinner" id="submit-spinner" hidden aria-hidden="true"></span>
+        </button>
       </form>
-      <div id="form-error" class="error" hidden></div>
+      <div id="form-success" class="success-panel" hidden role="status"></div>
+      <div id="form-error" class="alert alert--error" hidden role="alert"></div>
     </section>
 
-    <section class="card">
+    <section class="paper stack">
       <div class="toolbar">
-        <h2 style="margin:0; flex:1">Your jobs</h2>
-        <button type="button" class="secondary" id="refresh-btn">Refresh</button>
+        <h2 class="panel-title" style="margin:0">Your jobs</h2>
+        <button type="button" class="btn btn--secondary" id="refresh-btn">Refresh</button>
       </div>
-      <div id="jobs-empty" class="empty">No jobs yet — submit one above.</div>
-      <table id="jobs-table" hidden>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Template</th>
-            <th>Status</th>
-            <th>Site</th>
-            <th>Scheduled start</th>
-            <th>Deadline</th>
-          </tr>
-        </thead>
-        <tbody id="jobs-body"></tbody>
-      </table>
-      <div id="list-error" class="error" hidden></div>
+      <div id="jobs-skeleton" class="skeleton" hidden></div>
+      <div id="jobs-empty" class="empty" hidden>No jobs yet — submit one to begin.</div>
+      <div id="list-error" class="alert alert--error" hidden></div>
+      <div class="table-scroll">
+        <table id="jobs-table" class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Template</th>
+              <th scope="col">Status</th>
+              <th scope="col">Data center</th>
+              <th scope="col">Start (UTC)</th>
+              <th scope="col">Deadline (UTC)</th>
+            </tr>
+          </thead>
+          <tbody id="jobs-body"></tbody>
+        </table>
+      </div>
+
+      <article id="job-detail" class="glass detail-panel" hidden>
+        <h3 class="panel-title">Job detail</h3>
+        <p id="detail-id" class="num"></p>
+        <p id="moved-notice" class="alert alert--warn" hidden role="status"></p>
+        <ol class="journey" id="journey-track" aria-label="Job journey"></ol>
+        <p id="runtime-progress" class="progress-basis small"></p>
+        <h4 class="field-label">Activity</h4>
+        <p class="small muted">Recorded in this browser</p>
+        <ul id="activity-log" class="activity-log"></ul>
+        <div id="result-actions"></div>
+      </article>
     </section>
   </main>
 
   <script src="/static/js/api.js"></script>
+  <script src="/static/js/ui.js"></script>
+  <script src="/static/js/demo-data.js"></script>
   <script src="/static/js/portal.js"></script>
 </body>
 </html>
